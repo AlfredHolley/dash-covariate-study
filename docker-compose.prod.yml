@@ -1,0 +1,13 @@
+services:
+  dash-app:
+    build: .
+    ports:
+      - "127.0.0.1:8050:8050"  # Écoute uniquement en localhost (pour Nginx)
+    container_name: dash-buchinger-app
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+    # Optionnel : volumes pour logs
+    # volumes:
+    #   - ./logs:/app/logs
+

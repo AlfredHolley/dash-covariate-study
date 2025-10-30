@@ -1,0 +1,549 @@
+.cohort-nav {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.cohort-tab-btn {
+    background: #ffffff;
+    border: 1px solid #d9dee3;
+    border-radius: 16px;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+.cohort-tab-btn.selected {
+    background: #5bc2e7;
+    color: #ffffff;
+    border-color: #5bc2e7;
+}
+.tabulator-wrap {
+    width: 100%;
+}
+.tabulator {
+    font-family: 'Lato', 'Vista Sans OT', sans-serif;
+    font-size: 14px;
+}
+.tabulator .tabulator-header {
+    background-color: rgba(239, 247, 250);
+}
+/* Styles CSS simplifiés pour l'application de données réelles */
+
+/* Chargement des polices Vista Sans OT */
+@font-face {
+    font-family: 'Vista Sans OT';
+    src: url('vistaSansOT/VistaSansOT-Light.woff2') format('woff2'),
+         url('vistaSansOT/VistaSansOT-Light.woff') format('woff'),
+         url('vistaSansOT/VistaSansOT-Light.ttf') format('truetype');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Vista Sans OT';
+    src: url('vistaSansOT/VistaSansOT-Reg.woff2') format('woff2'),
+         url('vistaSansOT/VistaSansOT-Reg.woff') format('woff'),
+         url('vistaSansOT/VistaSansOT-Reg.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+td {
+    border-bottom: 1px solid rgb(230, 230, 230) !important;
+}
+th {
+    border-bottom: 2px solid rgb(230, 230, 230) !important;
+    font-size: 14px !important;
+}
+
+@font-face {
+    font-family: 'Vista Sans OT';
+    src: url('vistaSansOT/VistaSansOT-Medium.woff2') format('woff2'),
+         url('vistaSansOT/VistaSansOT-Medium.woff') format('woff'),
+         url('vistaSansOT/VistaSansOT-Medium.ttf') format('truetype');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Vista Sans OT';
+    src: url('vistaSansOT/VistaSansOT-Bold.woff2') format('woff2'),
+         url('vistaSansOT/VistaSansOT-Bold.woff') format('woff'),
+         url('vistaSansOT/VistaSansOT-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Vista Sans OT', 'Lato', 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+    line-height: 1.6;
+}
+
+.app-container {
+    /* max-width: 1200px; */
+    margin: 0 auto;
+    background-color: white;
+    min-height: 100vh;
+}
+.main-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+/* Header */
+.header {
+    text-align: center;
+    margin-bottom: 0px;
+    padding: 0;
+    /* border-bottom: 2px solid #e9ecef; */
+    position: relative;
+    width: 100%;
+}
+
+.header-image {
+    width: 100%;
+    max-height: 400px;
+    object-fit: cover;
+    display: block;
+}
+
+.header-content {
+    padding: 30px 20px;
+    position: relative;
+    padding-bottom: 0px;
+}
+
+.main-title {
+    font-size: 2rem;
+    color: #2c3e50;
+    margin-bottom: 10px;
+    font-weight: 300;
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    color: #6c757d;
+    max-width: 600px;
+    margin: 0 auto;
+    margin-bottom: 20px;
+}
+
+/* Collapsible long text under header */
+/* Bloc tronqué + dégradé */
+.profile-biography {
+    position: relative;
+    max-width: 800px;
+    margin: 12px auto 0 auto;
+}
+
+.collapsible-text {
+    position: relative;
+    max-height: 40px; /* ~7-8 lignes */
+    overflow: hidden;
+    color: #555;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    text-align: justify;
+    transition: max-height 450ms ease, opacity 300ms ease;
+    will-change: max-height;
+}
+
+.gradient {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 56px;
+    background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 300ms ease;
+}
+
+/* Barre et bouton centrés sur la bordure basse */
+.readmore-bar {
+    position: relative;
+    border-top: 1px solid #d4d4d4;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    margin-top: 20px; /* fixe pour éviter tout décalage visuel */
+}
+
+.readmore-btn {
+    position: static;
+    margin-top: -14px;
+    background: #ffffff;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    border:none;
+    color: #2c3e50;
+    cursor: pointer;
+}
+
+.readmore-btn i {
+    display: inline-block;
+    margin-left: 6px;
+    transition: transform 0.2s ease;
+}
+
+/* Icône FontAwesome via pseudo-élément pour éviter la dépendance React côté client */
+.readmore-btn::after {
+    content: "\f0d8"; /* fa-caret-up */
+    font-family: FontAwesome;
+    display: inline-block;
+    margin-left: 6px;
+    transition: none; /* rotation instantanée pour éviter le décalage visuel */
+    transform: rotate(180deg); /* fermé: pointe vers le bas */
+}
+
+.readmore-btn.opened::after {
+    transform: rotate(0deg); /* ouvert: pointe vers le haut */
+}
+
+.readmore-btn:hover {
+    border-color: #5bc2e7;
+}
+
+/* Category Panel */
+.category-panel {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 2px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.category-selector {
+    max-width: 400px;
+}
+
+/* Control Panel */
+.control-panel {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 2px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.section-title {
+    color: #2c3e50;
+    margin-bottom: 20px;
+    font-weight: 400;
+}
+
+.controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 10px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.input-group label {
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.input-field {
+    padding: 12px 15px;
+    border: 2px solid #dee2e6;
+    border-radius: 2px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.input-field:focus {
+    outline: none;
+    border-color: #5bc2e7;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.dropdown .Select-control {
+    border: 2px solid #dee2e6 !important;
+    border-radius: 2px !important;
+    font-size: 1rem !important;
+}
+
+.modern-radio-buttons button, .modern-radio-button {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+}
+.dropdown .Select-control:hover {
+    border-color: #5bc2e7 !important;
+}
+
+/* Radio Buttons */
+.modern-radio-buttons {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.modern-radio-buttons button,
+.modern-radio-button {
+    display: flex !important;
+    align-items: center;
+    padding: 10px 20px;
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #495057;
+    margin: 0 !important;
+    min-width: 100px;
+    justify-content: center;
+    font-family: inherit;
+}
+
+.modern-radio-buttons button img,
+.modern-radio-button img {
+    filter: opacity(0.8);
+    transition: filter 0.3s ease;
+}
+
+
+
+
+.modern-radio-buttons button.selected,
+.modern-radio-button.selected {
+    background:  #5bc2e7 ;
+    box-shadow: 0 3px 10px rgba(74, 144, 226, 0.3);
+    transform: translateY(-2px);
+}
+
+.modern-radio-buttons button.selected span,
+.modern-radio-button.selected span {
+    font-weight: 600;
+}
+
+.modern-radio-buttons button:hover,
+.modern-radio-button:hover {
+    border-color: #5bc2e7;
+    background: #f8f9fa;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.modern-radio-buttons input[type="radio"] {
+    display: none;
+}
+
+.modern-radio-buttons input[type="radio"]:checked + span {
+    font-weight: 600;
+}
+
+.modern-radio-buttons label:has(input[type="radio"]:checked) {
+    background: linear-gradient(135deg, #4a90e2 0%, #5bc2e7 100%);
+    border-color: #5bc2e7;
+    box-shadow: 0 3px 10px rgba(74, 144, 226, 0.3);
+    transform: translateY(-2px);
+}
+
+
+/* Results Section */
+.results-section {
+    margin-top: 30px;
+}
+
+.results-info {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.results-info-title {
+    color: #414141;
+    font-size: 1.5rem;
+    font-weight: 400;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.results-info h4 {
+    font-weight: 400;
+}
+
+/* Charts */
+.plotly-graph-div {
+    margin: 20px 0;
+}
+
+/* Carte graphe responsive */
+.chart-card {
+    width: 48%;
+    display: inline-block;
+    margin: 1%;
+}
+
+/* Data Table */
+.dash-table-container {
+    margin: 20px 0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+/* Tables responsive: autoriser le scroll horizontal sur petits écrans */
+.dash-table-container, .dash-table-container .dash-spreadsheet-container {
+    overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+    .dash-table-container .dash-spreadsheet-container {
+        min-width: 720px; /* force un scroll horizontal propre si trop de colonnes */
+    }
+    th {
+        font-size: 12px !important;
+    }
+    td {
+        font-size: 10px !important;
+    }
+
+}
+
+
+
+/* Forcer le wrapping du contenu des cellules et en-têtes des DataTables */
+.dash-table-container .dash-spreadsheet-container .dash-cell div,
+.dash-table-container .dash-spreadsheet-container .dash-header div {
+    display: block !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: initial !important;
+    word-wrap: break-word !important;
+    word-break: break-word !important;
+}
+
+.dash-table-container .dash-spreadsheet-container {
+    border-radius: 8px;
+}
+
+/* Footer */
+.footer {
+    background-color: #34373a;
+    margin-top: 60px;
+    padding: 30px 0;
+    width: 100%;
+    justify-content: center;
+    display: flex;
+    flex-direction: column;
+    min-height: 220px;
+}
+
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.footer-wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.footer-left {
+    flex: 1;
+    min-width: 300px;
+}
+
+.footer-right {
+    flex-shrink: 0;
+}
+
+.footer-clear {
+    clear: both;
+}
+
+.footer a {
+    color: #ffffff;
+    text-decoration: none;
+    transition: opacity 0.3s ease;
+    font-weight: 300;
+}
+
+.footer a:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+}
+
+.footer span {
+    font-size: 0.9rem;
+    font-weight: 300;
+    color: #ffffff;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+
+    
+    .main-title {
+        font-size: 1.5rem;
+    }
+    
+    .controls-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    .subtitle {
+        font-size: 1rem;
+    }
+    .collapsible-text {
+        font-size: 0.8rem;
+    }
+    
+    .modern-radio-buttons {
+        justify-content: center;
+    }
+    
+    .control-panel {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    .category-panel {
+        padding: 15px;
+    }
+    
+    .footer-wrap {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .footer-left,
+    .footer-right {
+        width: 100%;
+    }
+    
+    .footer-left span {
+        display: block;
+        margin-bottom: 10px;
+    }
+
+    /* Sur mobile: une seule colonne de graphes */
+    .chart-card {
+        width: 100% !important;
+        display: block;
+        margin: 10px 0;
+    }
+}

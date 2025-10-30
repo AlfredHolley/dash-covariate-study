@@ -1,0 +1,7 @@
+services:
+  dash-app:
+    build: .
+    ports:
+      - "8050:8050"
+    container_name: dash-buchinger-app
+    restart: unless-stopped
