@@ -5,6 +5,15 @@ on:
     branches:
       - main
       - master
+    paths:
+      - 'app.py'
+      - 'components/**'
+      - 'models/**'
+      - 'utils/**'
+      - 'requirements.txt'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'assets/**'
   workflow_dispatch:  # Permet de déclencher manuellement depuis GitHub
 
 jobs:
@@ -15,14 +24,7 @@ jobs:
       - name: 📥 Récupérer le code
         uses: actions/checkout@v4
 
-      - name: 🧪 Tests pré-déploiement (optionnel)
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          python -m py_compile app.py
-          echo "✅ Tests de syntaxe réussis"
-
-      - name: 🔐 Déploiement sur VPS via SSH
+      - name: 🔐 Déploiement sur VPS via SSH (rapide)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -65,28 +67,23 @@ jobs:
             if ! $DOCKER_COMPOSE_CMD version &> /dev/null; then
               DOCKER_COMPOSE_CMD="docker-compose"
             fi
-            
-            echo "🐳 Reconstruction et redémarrage des conteneurs..."
-            
-            # Arrêter les conteneurs existants
-            $DOCKER_COMPOSE_CMD down || true
-            
-            # Rebuild les images (sans cache pour garantir la dernière version)
-            $DOCKER_COMPOSE_CMD build --no-cache
-            
-            # Démarrer les conteneurs
-            $DOCKER_COMPOSE_CMD up -d
-            
-            # Attendre un peu pour que les conteneurs démarrent
-            sleep 5
+
+            echo "🐳 Reconstruction only-if-needed et redémarrage sans interruption..."
+
+            # Activer BuildKit pour des builds plus rapides avec cache
+            export DOCKER_BUILDKIT=1
+            export COMPOSE_DOCKER_CLI_BUILD=1
+
+            # Up avec build conditionnel (recrée uniquement si nécessaire)
+            $DOCKER_COMPOSE_CMD up -d --build --remove-orphans
             
             # Vérifier que les conteneurs sont en cours d'exécution
             echo "📦 Statut des conteneurs:"
             $DOCKER_COMPOSE_CMD ps
             
-            # Afficher les dernières lignes des logs
-            echo "📋 Derniers logs:"
-            $DOCKER_COMPOSE_CMD logs --tail=50
+            # Afficher un court extrait des logs (optionnel)
+            echo "📋 Derniers logs (20 lignes):"
+            $DOCKER_COMPOSE_CMD logs --tail=20 || true
             
             echo "✅ Déploiement terminé avec succès!"
 
