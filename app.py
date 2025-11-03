@@ -22,61 +22,6 @@ df_wide = pd.read_csv("dash_dataset_wide.csv", index_col=0, parse_dates=False)
 
 # Plus de statistiques p-valeurs utilisées (df_stats supprimé)
 
-# Charger les tables cohortes depuis Excel (plusieurs feuilles)
-try:
-    xls = pd.ExcelFile("article_tables.xlsx")
-    sheet_to_key = {
-        0: "Cohort",
-        1: "Fasting duration",
-        2: "Gender",
-        3: "Age",
-        4: "BMI",
-    }
-    cohort_store_payload = {}
-    for idx, key in sheet_to_key.items():
-        if idx < len(xls.sheet_names):
-            # Feuilles 2,3,4,5: double en-tête (MultiIndex)
-            if idx in (1, 2, 3, 4):
-                df_sheet = pd.read_excel(xls, sheet_name=idx, header=[0, 1])
-                # Nettoyer les intitulés 'Unnamed: *_level_*' -> '' et supprimer les colonnes concernées
-                def _clean(x):
-                    if isinstance(x, str) and x.startswith('Unnamed:'):
-                        return ''
-                    return '' if x is None else str(x)
-                cleaned_pairs = [(_clean(a), _clean(b)) for (a, b) in df_sheet.columns]
-                # Indices des colonnes à conserver (second niveau différent de '×', 'x', 'X' ou vide)
-                def _norm(s):
-                    s = str(s).replace('\xa0',' ').strip()
-                    return s
-                def _has_cross(s):
-                    s = _norm(s)
-                    return ('×' in s) or (s in {'x','X'})
-                # Conserver uniquement les colonnes dont aucun niveau d'en-tête ne contient '×' ou 'x'
-                keep_mask = [ not _has_cross(a) and not _has_cross(b) and not (_norm(a)=='' and _norm(b)=='') for (a, b) in cleaned_pairs]
-                tmp_df = df_sheet.loc[:, keep_mask].copy()
-                header_pairs = [p for (p, keep) in zip(cleaned_pairs, keep_mask) if keep]
-                # Supprimer toute colonne qui contient la valeur '×' dans ses cellules
-                def _col_has_cross(series):
-                    return series.astype(str).str.replace('\xa0',' ').str.strip().eq('×').any()
-                value_keep_mask = [not _col_has_cross(tmp_df.iloc[:, i]) for i in range(tmp_df.shape[1])]
-                df_sheet = tmp_df.loc[:, value_keep_mask]
-                header_pairs = [hp for (hp, vk) in zip(header_pairs, value_keep_mask) if vk]
-                flat_ids = [f"{a} | {b}".strip() for (a, b) in header_pairs]
-                df_sheet.columns = flat_ids
-                columns_meta = [
-                    {"id": fid, "name": [a, b]}
-                    for (fid, (a, b)) in zip(flat_ids, header_pairs)
-                ]
-            else:
-                df_sheet = xls.parse(idx)
-                columns_meta = [{"id": str(c), "name": str(c)} for c in df_sheet.columns]
-            cohort_store_payload[key] = {
-                "data": df_sheet.fillna("").to_dict("records"),
-                "columns": columns_meta
-            }
-except Exception:
-    cohort_store_payload = {}
-
 BIOMARKER_CATEGORIES = {
     'Hepatic health': ['ALP [U/L]', 'GGT [U/L]', 'GOT AST [U/L]', 'GPT ALT [U/L]'],
     'Lipid & Heart profile': ['LDL [mg/dL]', 'TC [mg/dL]', 'HDL [mg/dL]', 'SBP [mmHg]', 'DBP [mmHg]'],
@@ -225,6 +170,7 @@ app.index_string = '''
         <script src="https://code.highcharts.com/highcharts-more.js"></script>
         <script src="https://code.highcharts.com/modules/accessibility.js"></script>
         <script src="https://code.highcharts.com/modules/jitter.js"></script>
+        <script src="https://code.highcharts.com/modules/sankey.js"></script>
         <link href="https://unpkg.com/tabulator-tables@5.6.2/dist/css/tabulator.min.css" rel="stylesheet">
         <script src="https://unpkg.com/tabulator-tables@5.6.2/dist/js/tabulator.min.js"></script>
         {%favicon%}
@@ -278,8 +224,6 @@ app.layout = html.Div([
     #main container open
     html.Div([
     dcc.Store(id="df-store", data=df_wide.to_dict('records')),
-    dcc.Store(id="cohort-store", data=cohort_store_payload),
-    dcc.Store(id="cohort-tab", data="Cohort"),
     # Panneau de contrôle
         html.Div([
             html.H3("Filtering Criteria", className="section-title"),
@@ -344,18 +288,33 @@ app.layout = html.Div([
             
         ], className="control-panel"),
         
-    # Category Selection
+    # Category & Parameter Selection
         html.Div([
-            html.H3("Category", className="section-title"),
+            html.H3("Category & Parameter", className="section-title"),
             html.Div([
-                dcc.Dropdown(
-                    id="category-dropdown",
-                    options=[{"label": cat, "value": cat} for cat in BIOMARKER_CATEGORIES.keys()],
-                    value="Lipid & Heart profile",
-                    className="dropdown",
-                    searchable=False
-                )
-            ], className="category-selector")
+                # Category dropdown
+                html.Div([
+                    html.Label("Category"),
+                    dcc.Dropdown(
+                        id="category-dropdown",
+                        options=[{"label": cat, "value": cat} for cat in BIOMARKER_CATEGORIES.keys()],
+                        value="Lipid & Heart profile",
+                        className="dropdown",
+                        searchable=False
+                    )
+                ], className="input-group"),
+                # Parameter dropdown (will be populated based on category)
+                html.Div([
+                    html.Label("Parameter"),
+                    dcc.Dropdown(
+                        id="parameter-dropdown",
+                        options=[],
+                        placeholder="Select a category first",
+                        className="dropdown",
+                        searchable=False
+                    )
+                ], className="input-group")
+            ], className="controls-grid")
         ], className="category-panel"),
     
     # Résultats
@@ -382,17 +341,14 @@ app.layout = html.Div([
                 style={"margin": "20px 0"}
             )
         ], className="results-section"),
-        # Section Cohort & findings
+        # Section Cohort (statistiques descriptives de la cohorte filtrée)
         html.Div([
-            html.H3("Cohort & findings", style={"marginBottom": "10px"}),
-            html.Div([
-                html.Button("Cohort", id="cohort-btn-cohort", n_clicks=0, className="cohort-tab-btn"),
-                html.Button("Fasting duration", id="cohort-btn-duration", n_clicks=0, className="cohort-tab-btn"),
-                html.Button("Gender", id="cohort-btn-gender", n_clicks=0, className="cohort-tab-btn"),
-                html.Button("Age", id="cohort-btn-age", n_clicks=0, className="cohort-tab-btn"),
-                html.Button("BMI", id="cohort-btn-bmi", n_clicks=0, className="cohort-tab-btn"),
-            ], className="cohort-nav"),
-            html.Div(id="cohort-findings-container", style={"marginTop": "12px"})
+            html.H3("Patient profile", style={"marginBottom": "10px"}),
+            dcc.Loading(
+                id="loading-cohort-stats",
+                type="default",
+                children=html.Div(id="cohort-stats-container", style={"marginTop": "12px"})
+            )
         ], style={"marginTop": "30px"}),
     #main container close
     
@@ -442,28 +398,20 @@ app.clientside_callback(
     Input("aboutShowMoreTrigger", "n_clicks"),
 )
 
-# Switch cohort tab (client-side)
-app.clientside_callback(
-    ClientsideFunction(namespace='ui', function_name='switchCohortTab'),
-    Output("cohort-tab", "data"),
-    Input("cohort-btn-cohort", "n_clicks_timestamp"),
-    Input("cohort-btn-duration", "n_clicks_timestamp"),
-    Input("cohort-btn-gender", "n_clicks_timestamp"),
-    Input("cohort-btn-age", "n_clicks_timestamp"),
-    Input("cohort-btn-bmi", "n_clicks_timestamp"),
-    State("cohort-tab", "data")
+# Callback pour mettre à jour les options du paramètre selon la catégorie
+@app.callback(
+    Output("parameter-dropdown", "options"),
+    Output("parameter-dropdown", "value"),
+    Input("category-dropdown", "value")
 )
-
-# Mettre à jour le style sélectionné des boutons d'onglet
-app.clientside_callback(
-    ClientsideFunction(namespace='ui', function_name='updateCohortTabClasses'),
-    Output("cohort-btn-cohort", "className"),
-    Output("cohort-btn-duration", "className"),
-    Output("cohort-btn-gender", "className"),
-    Output("cohort-btn-age", "className"),
-    Output("cohort-btn-bmi", "className"),
-    Input("cohort-tab", "data")
-)
+def update_parameter_options(category):
+    if category and category in BIOMARKER_CATEGORIES:
+        parameters = BIOMARKER_CATEGORIES[category]
+        options = [{"label": param, "value": param} for param in parameters]
+        # Sélectionner le premier paramètre par défaut
+        default_value = parameters[0] if parameters else None
+        return options, default_value
+    return [], None
 
 # Callback client pour l'analyse (figures, tableau, infos)
 app.clientside_callback(
@@ -477,14 +425,17 @@ app.clientside_callback(
     Input("bmi-input", "value"),
     Input("sex-input", "data"),
     Input("category-dropdown", "value"),
+    Input("parameter-dropdown", "value"),
 )
 
-# Cohort & findings section (découplé des graphiques)
+# Cohort statistics section (Sankey diagram)
 app.clientside_callback(
-    ClientsideFunction(namespace='ui', function_name='updateCohortSection'),
-    Output("cohort-findings-container", "children"),
-    Input("cohort-store", "data"),
-    Input("cohort-tab", "data"),
+    ClientsideFunction(namespace='ui', function_name='updateCohortStats'),
+    Output("cohort-stats-container", "children"),
+    Input("df-store", "data"),
+    Input("age-input", "value"),
+    Input("bmi-input", "value"),
+    Input("sex-input", "data"),
 )
 
 # Switch charts grouping tab
@@ -631,4 +582,4 @@ Le callback serveur est remplacé par un callback client pour les performances.
 """
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=False, port=8050)
+    app.run(host="0.0.0.0", debug=True, port=8050)

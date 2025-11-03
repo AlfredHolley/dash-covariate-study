@@ -250,6 +250,10 @@ body {
     margin-bottom: 10px;
 }
 
+.category-panel .controls-grid {
+    grid-template-columns: repeat(2, 1fr);
+}
+
 .input-group {
     display: flex;
     flex-direction: column;
@@ -392,10 +396,24 @@ body {
 /* Carte graphe responsive */
 .chart-card {
     width: 48%;
-    display: inline-block;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     margin: 1%;
 }
 
+@media (max-width: 768px) {
+    .chart-card {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 10px 0;
+    }
+}
+.dash-spreadsheet-inner .dash-spreadsheet .dash-empty-01 .dash-no-filter .dash-fill-width{
+    min-width: 80% !important;
+}
 /* Favoriser le défilement vertical sur mobile pour Highcharts */
 .chart-card .highcharts-container,
 .chart-card svg.highcharts-root {
@@ -404,26 +422,32 @@ body {
     -webkit-overflow-scrolling: touch;
 }
 
-/* Data Table */
-.dash-table-container {
-    margin: 20px 0;
-    border-radius: 8px;
-    overflow: hidden;
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner.dash-fill-width .cell table {
+    border: 1px solid #e0e4e8;
 }
-/* Tables responsive: autoriser le scroll horizontal sur petits écrans */
-.dash-table-container, .dash-table-container .dash-spreadsheet-container {
-    overflow-x: auto;
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner.dash-fill-width .cell table{
+    width: 90%;
+    margin: 0 auto;
+}
+/* Masquer la navigation Cohort sur écrans larges */
+@media (min-width: 1201px) {
+    .category-panel .cohort-nav {
+        display: none !important;
+    }
 }
 
 @media (max-width: 768px) {
+    /* Retiré min-width pour permettre à la table de s'adapter à la largeur de l'écran */
+    /* Le scroll horizontal apparaîtra automatiquement seulement si le contenu dépasse */
     .dash-table-container .dash-spreadsheet-container {
-        min-width: 720px; /* force un scroll horizontal propre si trop de colonnes */
+        width: 100%;
+        max-width: 100%;
     }
     th {
-        font-size: 12px !important;
+        font-size: 15px !important;
     }
     td {
-        font-size: 10px !important;
+        font-size: 13px !important;
     }
 
 }
@@ -513,6 +537,10 @@ body {
     .controls-grid {
         grid-template-columns: 1fr;
         gap: 15px;
+    }
+    
+    .category-panel .controls-grid {
+        grid-template-columns: 1fr;
     }
     .subtitle {
         font-size: 1rem;

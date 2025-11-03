@@ -3,19 +3,6 @@
 
 window.dash_clientside = Object.assign({}, window.dash_clientside, {
   ui: {
-    switchCohortTab: function(t1, t2, t3, t4, t5, current) {
-      // Utiliser les timestamps pour choisir le dernier bouton cliqué
-      var ts = [t1||0, t2||0, t3||0, t4||0, t5||0];
-      var max = Math.max.apply(null, ts);
-      if (!max || max <= 0) return current || 'Cohort';
-      var idx = ts.indexOf(max);
-      return ['Cohort','Fasting duration','Gender','Age','BMI'][idx];
-    },
-    updateCohortTabClasses: function(active) {
-      var base = 'cohort-tab-btn';
-      var keys = ['Cohort','Fasting duration','Gender','Age','BMI'];
-      return keys.map(function(k){ return k === (active||'Cohort') ? base + ' selected' : base; });
-    },
     switchGroupingTab: function(t1, t2, t3, t4, current) {
       var ts = [t1||0, t2||0, t3||0, t4||0];
       var max = Math.max.apply(null, ts);
@@ -28,10 +15,23 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
       var keys = ['duration','gender','bmi','age'];
       return keys.map(function(k){ return k === (active||'duration') ? base + ' selected' : base; });
     },
-    updateAnalysis: function(data, groupingTab, age_cat, bmi_cat, sex, category) {
-      if (!data || !category) {
+    switchCohortStatsTab: function(t1, t2, t3, current) {
+      // Utiliser les timestamps pour choisir le dernier bouton cliqué
+      var ts = [t1||0, t2||0, t3||0];
+      var max = Math.max.apply(null, ts);
+      if (!max || max <= 0) return current || 'age';
+      var idx = ts.indexOf(max);
+      return ['age','bmi','gender'][idx];
+    },
+    updateCohortStatsTabClasses: function(active) {
+      var base = 'cohort-tab-btn';
+      var keys = ['age','bmi','gender'];
+      return keys.map(function(k){ return k === (active||'age') ? base + ' selected' : base; });
+    },
+    updateAnalysis: function(data, groupingTab, age_cat, bmi_cat, sex, category, parameter) {
+      if (!data || !category || !parameter) {
         return [
-          { 'props': { 'children': [{'props': {'children': 'Select a category to start the analysis', 'style': {'color': '#6c757d', 'marginBottom': '20px', 'textAlign': 'center'}}, 'type': 'H4', 'namespace': 'dash_html_components'}] }, 'type': 'Div', 'namespace': 'dash_html_components' },
+          { 'props': { 'children': [{'props': {'children': 'Select a category and parameter to start the analysis', 'style': {'color': '#6c757d', 'marginBottom': '20px', 'textAlign': 'center'}}, 'type': 'H4', 'namespace': 'dash_html_components'}] }, 'type': 'Div', 'namespace': 'dash_html_components' },
           '',
           ''
         ];
@@ -57,10 +57,14 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         xField = 'length_of_fasting_cat'; CATEGORY_ORDER = ['3-7 days', '8-12 days', '13-17 days', '18+ days']; CATEGORY_SHORT = ['3-7','8-12','13-17','18+']; CAT_COLORS = ['#4a90e2','#50e3c2','#f5a623','#d0021b'];
       }
 
-      var params = CATEGORIES[category] || [];
-      if (!params.length) {
-        return ['No parameters for this category', '', ''];
+      // Vérifier que le paramètre sélectionné est valide pour la catégorie
+      var validParams = CATEGORIES[category] || [];
+      if (validParams.indexOf(parameter) === -1) {
+        return ['Invalid parameter for selected category', '', ''];
       }
+
+      // Utiliser uniquement le paramètre sélectionné
+      var params = [parameter];
 
       // Filtrage
       var rows = data.filter(function(r){
@@ -86,12 +90,13 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         });
       });
 
-      // Construire deltas par paramètre
+      // Construire deltas pour le paramètre sélectionné (un seul graphique)
       var charts = [];
       var totalIds = new Set();
       var tableRows = {};
       var headerCounts = null;
-      params.forEach(function(p){
+      var p = params[0]; // Un seul paramètre
+      
         var xs = []; var ys = [];
         var perCat = {}; CATEGORY_ORDER.forEach(function(c){ perCat[c] = []; });
         Object.keys(byId).forEach(function(id){
@@ -160,8 +165,8 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         var isMobile = vw <= 768;
         charts.push({
           'type': 'Div', 'namespace': 'dash_html_components',
-          'props': { 'className': 'chart-card', 'style': isMobile ? { 'width': '100%', 'display': 'block', 'margin': '8px 0' } : { 'width': '48%', 'display': 'inline-block', 'margin': '1%' }, 'children': [
-            { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'id': mountId, 'style': { 'height': isMobile ? '260px' : '300px' } } }
+          'props': { 'className': 'chart-card', 'style': { 'width': '100%', 'margin': '8px 0', 'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center' }, 'children': [
+            { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'id': mountId, 'style': { 'height': isMobile ? '400px' : '450px', 'width': '100%', 'maxWidth': '800px' } } }
           ]}
         });
 
@@ -181,28 +186,57 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                 pinchType: '',
                 zooming: { enabled: false }
               },
+              title: { text: p, style: { fontSize: (isMobile2 ? '13px' : '15px'), fontFamily: '"VistaSans OT", "Vista Sans", Lato, Arial, sans-serif' } },
               plotOptions: {
                 series: {
-                  enableMouseTracking: !isMobile2 ? true : false,
+                  enableMouseTracking: true,
                   stickyTracking: false,
                   states: { hover: { enabled: true } },
-                  animation: false
+                  animation: false,
+                  cursor: 'pointer',
+                  events: {
+                    click: function (e) {
+                      var c = this.chart;
+                      var idx = null;
+                      if (e && e.point && typeof e.point.x === 'number') {
+                        idx = e.point.x;
+                      } else if (c && c.xAxis && c.xAxis[0] && typeof e.chartX === 'number') {
+                        var xAxis = c.xAxis[0];
+                        var relX = e.chartX - c.plotLeft;
+                        var val = xAxis.toValue ? xAxis.toValue(relX, true) : null;
+                        if (val !== null && val !== undefined && isFinite(val)) idx = Math.round(val);
+                      }
+                      if (typeof idx === 'number' && c && typeof c.setActiveBand === 'function') {
+                        c.setActiveBand(idx, (e && e.point) ? e.point : null);
+                      }
+                    }
+                  },
+                  point: {
+                    events: {
+                      click: function() {
+                        var idx = (typeof this.x === 'number') ? this.x : this.index;
+                        var c = this.series && this.series.chart;
+                        if (c && typeof c.setActiveBand === 'function') {
+                          c.setActiveBand(idx, this);
+                        }
+                      }
+                    }
+                  }
                 },
                 boxplot: {
-                  enableMouseTracking: !isMobile2 ? true : false
+                  enableMouseTracking: true
                 },
                 scatter: {
-                  enableMouseTracking: false
+                  enableMouseTracking: true
                 }
               },
-              title: { text: p, style: { fontSize: '14px' } },
               xAxis: { categories: CATEGORY_SHORT, title: { text: null } },
               yAxis: { title: { text: null } },
               accessibility: { enabled: true },
               legend: { enabled: false },
               credits: { enabled: false },
               tooltip: { 
-                enabled: !isMobile2,
+                enabled: true,
                 followTouchMove: false,
                 formatter: function(){
                   // Arrondi adaptatif: max 3 décimales selon l'ordre de grandeur
@@ -211,10 +245,16 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                     var dec = av >= 100 ? 0 : (av >= 10 ? 1 : (av >= 1 ? 2 : 3));
                     return Highcharts.numberFormat(v, dec);
                   }
-                  var idx = this.point.index;
-                  var n = counts[idx] || 0;
-                  var med = (typeof this.point.median === 'number') ? fmt(this.point.median) : this.point.median;
-                  return '<b>Median:</b> ' + med + '<br/><b>n:</b> ' + n;
+                  // Récupérer l'indice de catégorie de manière robuste (boxplot OU scatter)
+                  var idx = (typeof this.point.x === 'number') ? this.point.x : this.point.index;
+                  if (idx === undefined || idx === null) idx = 0;
+                  // Essayer de récupérer la médiane depuis le point boxplot correspondant
+                  var bpSeries = (this.series && this.series.chart && this.series.chart.series && this.series.chart.series[0]) ? this.series.chart.series[0] : null;
+                  var bpPoint = (bpSeries && bpSeries.points && bpSeries.points[idx]) ? bpSeries.points[idx] : null;
+                  var medVal = (bpPoint && typeof bpPoint.median === 'number') ? bpPoint.median : ((typeof this.point.median === 'number') ? this.point.median : null);
+                  var medStr = (medVal !== null && medVal !== undefined) ? fmt(medVal) : '—';
+                  var n = (counts && counts[idx]) ? counts[idx] : 0;
+                  return '<b>Median:</b> ' + medStr + '<br/><b>n:</b> ' + n;
                 }
               },
               series: [
@@ -224,7 +264,16 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                   data: seriesData,
                   whiskerWidth: 0,
                   lineWidth: 1.5,
-                  color: 'rgba(50,50,50,1)'
+                  color: 'rgba(50,50,50,1)',
+                  events: {
+                    click: function(e){
+                      var c = this.chart;
+                      var idx = (e && e.point && typeof e.point.x === 'number') ? e.point.x : null;
+                      if (typeof idx === 'number' && c && typeof c.setActiveBand === 'function') {
+                        c.setActiveBand(idx, e.point);
+                      }
+                    }
+                  }
                 },
                 {
                   name: 'Individuals',
@@ -234,13 +283,56 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                   marker: { radius: 3.5, lineWidth: 0.5 },
                   opacity: 0.45,
                   tooltip: { enabled: false },
-                  enableMouseTracking: false,
+                  enableMouseTracking: true,
                   states: { hover: { enabled: false }, inactive: { opacity: 1 } },
+                  events: {
+                    click: function(e){
+                      var c = this.chart;
+                      var idx = (e && e.point && typeof e.point.x === 'number') ? e.point.x : null;
+                      if (typeof idx === 'number' && c && typeof c.setActiveBand === 'function') {
+                        c.setActiveBand(idx, e.point);
+                      }
+                    }
+                  },
                   showInLegend: false,
                   color: undefined
                 }
               ]
             });
+
+            // Cliquer une zone de catégorie OU un point: surligner et afficher le tooltip
+            try {
+              var xAxis0 = chart && chart.xAxis && chart.xAxis[0];
+              if (xAxis0) {
+                var catArr = CATEGORY_SHORT || [];
+                chart.setActiveBand = function(idx, point){
+                  try {
+                    xAxis0.removePlotBand('active-band');
+                  } catch(e) {}
+                  xAxis0.addPlotBand({ id: 'active-band', from: idx - 0.5, to: idx + 0.5, color: 'rgba(0,0,0,0.08)', zIndex: 0 });
+                  var pt = point || (chart.series[0] && chart.series[0].points ? chart.series[0].points[idx] : null);
+                  if (!pt && chart.series[1] && chart.series[1].points) {
+                    // fallback: premier scatter du bin
+                    for (var k = 0; k < chart.series[1].points.length; k++) {
+                      if (chart.series[1].points[k].x === idx) { pt = chart.series[1].points[k]; break; }
+                    }
+                  }
+                  if (pt) { chart.tooltip.refresh(pt); }
+                };
+                for (var ii = 0; ii < catArr.length; ii++) {
+                  (function(i){
+                    xAxis0.addPlotBand({
+                      id: 'click-band-' + i,
+                      from: i - 0.5,
+                      to: i + 0.5,
+                      color: 'rgba(0,0,0,0)',
+                      zIndex: 0,
+                      events: { click: function(){ if (chart && chart.setActiveBand) chart.setActiveBand(i); } }
+                    });
+                  })(ii);
+                }
+              }
+            } catch(e) { /* no-op */ }
 
             // Appliquer une règle CSS runtime pour favoriser le scroll vertical
             if (chart && chart.container) {
@@ -253,34 +345,42 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         }, 0);
 
         // Table data for this parameter: mean +/- CI95 by category
-        var row = { 'Parameter': p };
+        // Calculer les statistiques pour chaque catégorie
         CATEGORY_ORDER.forEach(function(cat){
           var arr = perCat[cat];
+          if (!tableRows[cat]) {
+            tableRows[cat] = {};
+          }
           if (arr.length > 0) {
             var m = arr.reduce((a,b)=>a+b,0)/arr.length;
             var variance = arr.reduce((a,b)=>a + Math.pow(b-m,2),0) / (arr.length - 1 || 1);
             var sd = Math.sqrt(variance);
             var se = sd / Math.sqrt(arr.length);
             var low = m - 1.96*se; var up = m + 1.96*se;
-            row[cat] = m.toFixed(1) + ' [' + low.toFixed(1) + '; ' + up.toFixed(1) + ']';
+            tableRows[cat][p] = m.toFixed(1) + ' [' + low.toFixed(1) + '; ' + up.toFixed(1) + ']';
           } else {
-            row[cat] = 'N/A';
+            tableRows[cat][p] = 'N/A';
           }
-        });
-        tableRows[p] = row;
       });
 
-      // DataTable Dash (retour)
-      // Remarque: Dans dash_table.DataTable, '\n' ou '<br>' dans le header ne fonctionnent pas (voir doc).
-      // La seule astuce possible côté client est d'utiliser un espace insécable (unicode: \u00A0) ou d'ajouter un style CSS, 
-      // ou de séparer visuellement le texte avec un séparateur, ex: '•'.
+      // DataTable Dash transposé : catégories en lignes, paramètre en colonne
       var firstColTitle = (grouping==='duration') ? 'days' : (grouping==='gender'?'Gender': grouping==='bmi'?'BMI categories':'Age categories');
-      var columns = [{name: firstColTitle, id: 'Parameter'}].concat(CATEGORY_ORDER.map(function(c, idx){
+      var columns = [{name: firstColTitle, id: 'Category'}].concat([{
+        name: p,
+        id: 'Parameter',
+        type: 'text'
+      }]);
+      
+      // Créer les lignes : une ligne par catégorie
+      var dataRows = CATEGORY_ORDER.map(function(cat, idx){
         var nVal = headerCounts ? headerCounts[idx] : 0;
-        // Utilisation d'un séparateur " • " pour séparer les lignes dans le header (car ni \n ni <br> ne sont supportés)
-        return { name: CATEGORY_SHORT[idx] + '  (n=' + nVal + ')', id: c };
-      }));
-      var dataRows = Object.values(tableRows);
+        var catLabel = CATEGORY_SHORT[idx] + '  (n=' + nVal + ')';
+        var value = tableRows[cat] && tableRows[cat][p] ? tableRows[cat][p] : 'N/A';
+        return {
+          'Category': catLabel,
+          'Parameter': value
+        };
+      });
       var vw = (typeof window !== 'undefined') ? window.innerWidth : 1024;
       var isMobile = vw <= 768;
       var isWide = vw >= 1200;
@@ -294,9 +394,8 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
           'columns': columns,
           'merge_duplicate_headers': true,
           'page_action': 'native',
-          'page_size': 10,
           'style_cell': { 
-            'textAlign': 'left', 
+            'textAlign': 'center', 
             'fontFamily': 'Lato, sans-serif', 
             'fontSize': isMobile ? '11px' : '13px', 
             'whiteSpace': 'normal', 
@@ -304,11 +403,8 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
             'padding': cellPadding || '10px 12px',
             'height': 'auto',
             'lineHeight': '1.25',
-            'minWidth': isMobile ? '40px' : '110px',
-            'maxWidth': isMobile ? '130px' : '260px',
             'width': 'auto',
             'border': 'none',
-            'borderBottom': '1px solid #e6e6e6'
           },
           'style_header': { 
             'backgroundColor': '#f3f6f8', 
@@ -320,23 +416,18 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
           },
           'style_data': { 'backgroundColor': 'white', 'border': 'none' },
           'style_data_conditional': [
-            { 'if': { 'column_id': 'Parameter' }, 'fontWeight': '500' }
-          ].concat(CATEGORY_ORDER.map(function(cat){ return { 'if': { 'column_id': cat }, 'fontSize': catFontSize }; })),
+            { 'if': { 'column_id': 'Category' }, 'fontWeight': '500' },
+            { 'if': { 'column_id': 'Parameter' }, 'fontSize': catFontSize, 'textAlign': 'center' }
+          ],
           'style_table': { 
             'margin': '12px 0', 
-            'width': '100%',
-            'border': '1px solid #e0e4e8',
             'borderRadius': '4px',
             'overflowX': 'auto',
             'overflowY': 'hidden',
-            'display': 'block',
-            'maxWidth': '100%'
+            'width': '100%',
+            'maxWidth': '100%',
           },
-          'fill_width': true,
-          'css': [
-            { 'selector': '.dash-table-container .dash-spreadsheet-container .dash-header div', 'rule': 'display:block; white-space: normal;' },
-            { 'selector': '.dash-table-container .dash-spreadsheet-container .dash-cell div', 'rule': 'display:block; white-space: normal;' }
-          ]
+
         }
       };
 
@@ -344,7 +435,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         { 'type': 'H4', 'namespace': 'dash_html_components', 'props': { 'children': Array.from(new Set(Array.from(totalIds))).length + ' fasters', 'className': 'results-info-title' } }
       ]}};
 
-      var chartsWrap = { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'style': { 'display': 'flex', 'flexWrap': 'wrap' }, 'children': charts }};
+      var chartsWrap = { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'style': { 'display': 'flex', 'flexWrap': 'wrap', 'justifyContent': 'center' }, 'children': charts }};
       var tableWrap = { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'children': [
         { 'type': 'H4', 'namespace': 'dash_html_components', 'props': { 'children': 'Mean Change [Confidence Interval 95%]', 'style': {'marginTop': '30px'} } },
         table
@@ -352,38 +443,497 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
 
       return [info, chartsWrap, tableWrap];
     },
-    updateCohortSection: function(cohortStore, cohortTab) {
+    updateCohortStats: function(data, age_cat, bmi_cat, sex) {
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        return { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'children': 'No data available' } };
+      }
+
+      // Filtrer les données selon les critères
+      var filtered = data.filter(function(r) {
+        var ok = true;
+        if (age_cat) ok = ok && r.age_cat === age_cat;
+        if (bmi_cat) ok = ok && r.BMI_cat === bmi_cat;
+        if (sex) ok = ok && r.sex === sex;
+        return ok;
+      });
+
+      if (filtered.length === 0) {
+        return { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'children': 'No data matching the selected filters' } };
+      }
+
+      // Extraire les données uniques par meta_id (un patient = un meta_id)
+      var uniquePatients = {};
+      filtered.forEach(function(r) {
+        var id = r.meta_id;
+        if (!uniquePatients[id]) {
+          uniquePatients[id] = {
+            age: r.age,
+            age_cat: r.age_cat,
+            sex: r.sex,
+            BMI: r.BMI,
+            BMI_cat: r.BMI_cat,
+            length_of_fasting_cat: r.length_of_fasting_cat
+          };
+        }
+      });
+
+      var patients = Object.values(uniquePatients);
+      var totalPatients = patients.length;
+
+      // Catégories pour le Sankey
+      var ageCategories = ['Young adults (18-34 years)', 'Middle age (35-64 years)', 'Older adults (≥65 years)'];
+      var bmiCategories = ['Normal (18–24.9 kg/m²)', 'Overweight (25.0–29.9 kg/m²)', 'Obesity (≥30 kg/m²)'];
+      var sexCategories = ['Male', 'Female'];
+      var fastingCategories = ['3-7 days', '8-12 days', '13-17 days', '18+ days'];
+
+      // Compter par catégorie d'âge
+      var ageCounts = {};
+      ageCategories.forEach(function(cat) { ageCounts[cat] = 0; });
+      patients.forEach(function(p) {
+        if (p.age_cat && ageCounts.hasOwnProperty(p.age_cat)) {
+          ageCounts[p.age_cat]++;
+        }
+      });
+
+      // Compter par catégorie de BMI
+      var bmiCounts = {};
+      bmiCategories.forEach(function(cat) { bmiCounts[cat] = 0; });
+      patients.forEach(function(p) {
+        if (p.BMI_cat && bmiCounts.hasOwnProperty(p.BMI_cat)) {
+          bmiCounts[p.BMI_cat]++;
+        }
+      });
+
+      // Pie chart pour le sexe
+      var sexCounts = { M: 0, F: 0 };
+      patients.forEach(function(p) {
+        if (p.sex === 'M') sexCounts.M++;
+        else if (p.sex === 'F') sexCounts.F++;
+      });
+
       var vw = (typeof window !== 'undefined') ? window.innerWidth : 1024;
       var isMobile = vw <= 768;
-      var key = cohortTab || 'Cohort';
-      var bundle = cohortStore && cohortStore[key];
-      if (!(bundle && bundle.data && bundle.columns && bundle.columns.length)) return '';
-      var cohortColumns = bundle.columns.map(function(c){
-        if (c && typeof c === 'object' && 'id' in c) return c;
-        if (Array.isArray(c)) return { name: c, id: c.join(' | ') };
-        return { name: String(c), id: String(c) };
+       
+      // Créer un seul conteneur pour le diagramme Sankey
+      var sankeyMountId = 'hc_cohort_sankey';
+      var sankeyChartDiv = {
+        'type': 'Div',
+        'namespace': 'dash_html_components',
+        'props': {
+          'className': 'chart-card',
+          'style': { 'width': '100%', 'margin': '10px 0', 'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center' },
+          'children': [
+            { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'id': sankeyMountId, 'style': { 'height': isMobile ? '500px' : '600px', 'width': '100%', 'maxWidth': '1200px' } } }
+          ]
+        }
+      };
+      
+      var chartsContainer = {
+        'type': 'Div',
+        'namespace': 'dash_html_components',
+        'props': {
+          'style': { 'display': 'flex', 'flexWrap': 'wrap', 'justifyContent': 'center', 'marginTop': '15px' },
+          'children': [sankeyChartDiv]
+        }
+      };
+
+      // Construire le diagramme Sankey
+      // Structure: Age -> BMI -> Gender -> Fasting Duration
+      setTimeout(function() {
+        if (!window.Highcharts) {
+          console.error('Highcharts not loaded');
+          return;
+        }
+        if (!window.Highcharts.seriesTypes || !window.Highcharts.seriesTypes.sankey) {
+          console.error('Sankey module not loaded. Make sure sankey.js is included.');
+          return;
+        }
+        
+        if (window.Highcharts && window.Highcharts.seriesTypes && window.Highcharts.seriesTypes.sankey) {
+          var vw2 = (typeof window !== 'undefined') ? window.innerWidth : 1024;
+          var isMobile2 = vw2 <= 768;
+          
+          if (totalPatients === 0) {
+            return;
+          }
+          
+          // Créer les nœuds pour le Sankey avec couleurs et ordre vertical
+          // Dans Highcharts Sankey, l'ordre dans le tableau détermine la position verticale (bas vers haut)
+          var nodes = [];
+          var nodeIndex = {};
+          
+          // Mapping des catégories avec labels et couleurs
+          // Age: Young (bas) → Middle → Older (haut)
+          var ageConfig = [
+            { cat: 'Young adults (18-34 years)', short: '18-34', name: 'Young adults', color: '#4a90e2' },
+            { cat: 'Middle age (35-64 years)', short: '35-64', name: 'Middle Age', color: '#50e3c2' },
+            { cat: 'Older adults (≥65 years)', short: '≥65', name: 'Older Adults', color: '#f5a623' }
+          ];
+          
+          // BMI: Normal (bas) → Overweight → Obesity (haut)
+          var bmiConfig = [
+            { cat: 'Normal (18–24.9 kg/m²)', short: 'Normal', name: 'Normal', color: '#50e3c2' },
+            { cat: 'Overweight (25.0–29.9 kg/m²)', short: 'Overweight', name: 'Overweight', color: '#f5a623' },
+            { cat: 'Obesity (≥30 kg/m²)', short: 'Obesity', name: 'Obesity', color: '#d0021b' }
+          ];
+          
+          // Gender: Male (bas) → Female (haut)
+          var genderConfig = [
+            { sex: 'M', name: 'Male', color: '#4a90e2' },
+            { sex: 'F', name: 'Female', color: '#f45b69' }
+          ];
+          
+          // Fasting: 3-7 (bas) → 8-12 → 13-17 → 18+ (haut)
+          var fastingConfig = [
+            { cat: '3-7 days', name: '3-7 days', color: '#4a90e2' },
+            { cat: '8-12 days', name: '8-12 days', color: '#50e3c2' },
+            { cat: '13-17 days', name: '13-17 days', color: '#f5a623' },
+            { cat: '18+ days', name: '18+ days', color: '#d0021b' }
+          ];
+          
+          // Colonne 1: Age (ordre: Young en bas → Older en haut)
+          // offset: 0 = bas, plus élevé = plus haut
+          ageConfig.forEach(function(config, idx) {
+            var nodeId = 'Age_' + config.short;
+            nodeIndex[nodeId] = nodes.length;
+            nodes.push({ 
+              id: nodeId, 
+              name: config.name, 
+              column: 0, 
+              color: config.color,
+              originalShort: config.short 
+            });
       });
-      var cohortProps = {
-        'data': bundle.data,
-        'columns': cohortColumns,
-        'merge_duplicate_headers': true,
-        'style_cell': { 'textAlign': 'left', 'fontFamily': 'Lato, sans-serif', 'fontSize': isMobile ? '12px' : '14px', 'whiteSpace': 'normal', 'padding': isMobile ? '6px 8px' : '8px 10px', 'border': 'none', 'borderBottom': '1px solid #e6e6e6', 'height':'auto', 'lineHeight':'1.25', 'minWidth': isMobile?'50px':'80px', 'maxWidth': isMobile?'130px':'none', 'width':'auto' },
-        'style_header': { 'backgroundColor': '#f3f6f8', 'fontWeight': '700', 'border': 'none', 'borderBottom': '2px solid #cfd6dc', 'whiteSpace': 'normal', 'fontSize': '12px' },
-        'style_table': { 'margin': '12px 0', 'width': '100%', 'border': '1px solid #e0e4e8', 'borderRadius': '4px', 'overflowX': 'auto', 'overflowY': 'hidden', 'display': 'block', 'maxWidth': '100%' },
-        'fill_width': true,
-        'css': [
-          { 'selector': '.dash-table-container .dash-spreadsheet-container .dash-header div', 'rule': 'display:block; white-space: normal;' },
-          { 'selector': '.dash-table-container .dash-spreadsheet-container .dash-cell div', 'rule': 'display:block; white-space: normal;' }
-        ]
-      };
-      if ((key || 'Cohort') !== 'Cohort') {
-        cohortProps['page_action'] = 'native';
-        cohortProps['page_size'] = 8;
-      }
-      return {
-        'type': 'DataTable', 'namespace': 'dash_table',
-        'props': cohortProps
-      };
+          
+          // Colonne 2: BMI (ordre: Normal en bas → Obesity en haut)
+          bmiConfig.forEach(function(config, idx) {
+            var nodeId = 'BMI_' + config.short;
+            nodeIndex[nodeId] = nodes.length;
+            nodes.push({ 
+              id: nodeId, 
+              name: config.name, 
+              column: 1, 
+              color: config.color,
+              originalShort: config.short 
+            });
+          });
+          
+          // Colonne 3: Gender (ordre: Male en bas → Female en haut)
+          genderConfig.forEach(function(config, idx) {
+            var nodeId = 'Gender_' + config.name;
+            nodeIndex[nodeId] = nodes.length;
+            nodes.push({ 
+              id: nodeId, 
+              name: config.name, 
+              column: 2, 
+              color: config.color,
+              originalSex: config.sex 
+            });
+          });
+          
+          // Colonne 4: Fasting Duration (ordre: 3-7 en bas → 18+ en haut)
+          fastingConfig.forEach(function(config, idx) {
+            var nodeId = 'Fasting_' + config.cat;
+            nodeIndex[nodeId] = nodes.length;
+            nodes.push({ 
+              id: nodeId, 
+              name: config.name, 
+              column: 3, 
+              color: config.color,
+              originalCat: config.cat 
+            });
+          });
+          
+          // Calculer les flux (liens) directement avec les IDs des nœuds
+          var links = [];
+          
+          // Fonction helper pour trouver le short ID depuis une catégorie complète
+          function getAgeShort(cat) {
+            if (cat.indexOf('Young') >= 0) return '18-34';
+            if (cat.indexOf('Middle') >= 0) return '35-64';
+            if (cat.indexOf('Older') >= 0) return '≥65';
+            return null;
+          }
+          
+          function getBmiShort(cat) {
+            if (cat.indexOf('Normal') >= 0) return 'Normal';
+            if (cat.indexOf('Overweight') >= 0) return 'Overweight';
+            if (cat.indexOf('Obesity') >= 0) return 'Obesity';
+            return null;
+          }
+          
+          // Flux Age -> BMI
+          var ageToBmi = {};
+          patients.forEach(function(p) {
+            if (p.age_cat && p.BMI_cat) {
+              var ageShort = getAgeShort(p.age_cat);
+              var bmiShort = getBmiShort(p.BMI_cat);
+              if (ageShort && bmiShort) {
+                var fromId = 'Age_' + ageShort;
+                var toId = 'BMI_' + bmiShort;
+                var key = fromId + '|' + toId;
+                if (!ageToBmi[key]) ageToBmi[key] = { from: fromId, to: toId, weight: 0 };
+                ageToBmi[key].weight++;
+              }
+            }
+          });
+          Object.keys(ageToBmi).forEach(function(key) {
+            links.push(ageToBmi[key]);
+          });
+          
+          // Flux BMI -> Gender
+          var bmiToGender = {};
+          patients.forEach(function(p) {
+            if (p.BMI_cat && p.sex) {
+              var bmiShort = getBmiShort(p.BMI_cat);
+              if (bmiShort) {
+                var fromId = 'BMI_' + bmiShort;
+                var toId = 'Gender_' + (p.sex === 'M' ? 'Male' : 'Female');
+                var key = fromId + '|' + toId;
+                if (!bmiToGender[key]) bmiToGender[key] = { from: fromId, to: toId, weight: 0 };
+                bmiToGender[key].weight++;
+              }
+            }
+          });
+          Object.keys(bmiToGender).forEach(function(key) {
+            links.push(bmiToGender[key]);
+          });
+          
+          // Flux Gender -> Fasting Duration
+          var genderToFasting = {};
+          patients.forEach(function(p) {
+            if (p.sex && p.length_of_fasting_cat) {
+              var fromId = 'Gender_' + (p.sex === 'M' ? 'Male' : 'Female');
+              var toId = 'Fasting_' + p.length_of_fasting_cat;
+              var key = fromId + '|' + toId;
+              if (!genderToFasting[key]) genderToFasting[key] = { from: fromId, to: toId, weight: 0 };
+              genderToFasting[key].weight++;
+            }
+          });
+          Object.keys(genderToFasting).forEach(function(key) {
+            links.push(genderToFasting[key]);
+          });
+          
+          // Calculer les comptes par nœud pour les pourcentages
+          var nodeCounts = {};
+          patients.forEach(function(p) {
+            var a = getAgeShort(p.age_cat);
+            if (a) {
+              var nodeId = 'Age_' + a;
+              nodeCounts[nodeId] = (nodeCounts[nodeId] || 0) + 1;
+            }
+            var b = getBmiShort(p.BMI_cat);
+            if (b) {
+              var nodeId = 'BMI_' + b;
+              nodeCounts[nodeId] = (nodeCounts[nodeId] || 0) + 1;
+            }
+            var g = (p.sex === 'M' ? 'Male' : (p.sex === 'F' ? 'Female' : null));
+            if (g) {
+              var nodeId = 'Gender_' + g;
+              nodeCounts[nodeId] = (nodeCounts[nodeId] || 0) + 1;
+            }
+            if (p.length_of_fasting_cat) {
+              var nodeId = 'Fasting_' + p.length_of_fasting_cat;
+              nodeCounts[nodeId] = (nodeCounts[nodeId] || 0) + 1;
+            }
+          });
+          
+          // Calculer les pourcentages par nœud
+          var nodePercentages = {};
+          Object.keys(nodeCounts).forEach(function(nodeId) {
+            nodePercentages[nodeId] = totalPatients > 0 ? (nodeCounts[nodeId] / totalPatients * 100) : 0;
+          });
+          
+          // Calculer les comptes par nœud source pour les pourcentages des liens
+          var sourceNodeCounts = {};
+          links.forEach(function(link) {
+            sourceNodeCounts[link.from] = (sourceNodeCounts[link.from] || 0) + link.weight;
+          });
+          
+          // Convertir les liens en format Highcharts avec les couleurs et % par source
+          var sankeyData = links.map(function(link) {
+            // Trouver la couleur du nœud source
+            var sourceNode = nodes.find(function(n) { return n.id === link.from; });
+            var sourceColor = sourceNode ? sourceNode.color : '#cccccc';
+            var totalFrom = sourceNodeCounts[link.from] || 0;
+            var linkPercent = totalFrom > 0 ? (link.weight / totalFrom * 100) : 0;
+
+            // Retourner avec la couleur du nœud source et le % du flux relatif à la source
+            return {
+              from: link.from,
+              to: link.to,
+              weight: link.weight,
+              color: sourceColor,
+              linkPercent: linkPercent
+            };
+          });
+          
+          // Debug: afficher les données dans la console
+          console.log('Sankey nodes:', nodes);
+          console.log('Sankey data:', sankeyData);
+          
+          // Créer le graphique Sankey
+          window.Highcharts.chart(sankeyMountId, {
+            chart: {
+              type: 'sankey',
+              backgroundColor: 'white',
+              spacingLeft: 10,
+              spacingRight: 10,
+              spacingTop: (isMobile2 ? 34 : 46),
+              panning: false,
+              pinchType: '',
+              zooming: { enabled: false },
+              style: { fontFamily: '"VistaSans OT", "Vista Sans", Lato, Arial, sans-serif' },
+              events: {
+                render: function () {
+                  var chart = this;
+                  var series = (chart.series && chart.series[0]) ? chart.series[0] : null;
+                  if (!series || !series.nodes || series.nodes.length === 0) return;
+
+                  var names = ['Age', 'BMI', 'Gender', 'Duration'];
+                  var centers = {};
+                  series.nodes.forEach(function(n){
+                    if (!n || typeof n.column !== 'number' || !n.shapeArgs) return;
+                    var cx = (n.shapeArgs.x || 0) + (n.shapeArgs.width || 0) / 2;
+                    if (!isFinite(cx)) return;
+                    if (centers[n.column] === undefined) centers[n.column] = cx;
+                  });
+
+                  if (!chart.customColumnLabels) chart.customColumnLabels = [];
+                  for (var i = 0; i < names.length; i++) {
+                    var x = centers[i] !== undefined ? centers[i] : (chart.plotLeft + (i + 0.5) * (chart.plotWidth / names.length));
+                    var y = chart.plotTop - 2;
+                    var label = chart.customColumnLabels[i];
+                    if (!label) {
+                      label = chart.renderer.text(names[i], x, y)
+                        .attr({ zIndex: 7, align: 'center' })
+                        .css({ fontFamily: '"VistaSans OT", "Vista Sans", Lato, Arial, sans-serif', fontSize: '15px', fontWeight: '600', color: '#333', textAnchor: 'middle' })
+                        .add();
+                      chart.customColumnLabels[i] = label;
+                    } else {
+                      label.attr({ x: x, y: y });
+                    }
+                  }
+                },
+                click: function (e) {
+                  var chart = this;
+                  var xAxis = chart && chart.xAxis && chart.xAxis[0];
+                  if (!xAxis) return;
+                  var relX = (e && typeof e.chartX === 'number') ? (e.chartX - chart.plotLeft) : null;
+                  if (relX === null) return;
+                  var val = xAxis.toValue ? xAxis.toValue(relX, true) : null;
+                  if (val === null || val === undefined || !isFinite(val)) return;
+                  var idx = Math.round(val);
+                  if (typeof chart.setActiveBand === 'function') {
+                    chart.setActiveBand(idx, null);
+                  }
+                }
+              }
+            },
+            title: { text: '', style: { fontSize: '16px', fontFamily: '"VistaSans OT", "Vista Sans", Lato, Arial, sans-serif' } },
+            credits: { enabled: false },
+            plotOptions: {
+              sankey: {
+                enableMouseTracking: true,
+                animation: true,
+                cursor: 'pointer',
+                linkColorMode: 'from',
+                states: {
+                  hover: {
+                    linkOpacity: 0.7,
+                    brightness: 0.1
+                  },
+                  inactive: {
+                    linkOpacity: 0.2
+                  }
+                },
+                dataLabels: {
+                  enabled: true,
+                  useHTML: true,
+                  formatter: function() {
+                    if (this.point && this.point.node) {
+                      var nodeId = this.point.node.id;
+                      var nodePercent = nodePercentages[nodeId] || 0;
+                      return '<div style="text-align: center; font-size: ' + (isMobile2 ? '13px' : '16px') + '; font-weight: 600; color: #111111; font-family: \"VistaSans OT\", \"Vista Sans\", Lato, Arial, sans-serif;\"><div>' + this.point.node.name + '</div><div style=\"font-size: 0.85em; color: #666; margin-top: 2px;\">' + nodePercent.toFixed(1) + '%</div></div>';
+                    }
+                    return '';
+                  },
+                  allowOverlap: true,
+                  style: {
+                    textOutline: 'none',
+                    cursor: 'pointer',
+                    fontFamily: '"VistaSans OT", "Vista Sans", Lato, Arial, sans-serif',
+                    color: '#111111',
+                    pointerEvents: 'none'
+                  }
+                },
+                nodeWidth: 25,
+                nodePadding: 15,
+                minLinkWidth: 3,
+                linkOpacity: 0.5
+              }
+            },
+            tooltip: {
+              enabled: true,
+              useHTML: true,
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              borderWidth: 1,
+              borderRadius: 4,
+              shadow: true,
+              style: { zIndex: 9999, pointerEvents: 'none', fontFamily: '"VistaSans OT", "Vista Sans", Lato, Arial, sans-serif' },
+              formatter: function() {
+                var p = this.point || {};
+                // Tooltip pour les liens (ponts)
+                if (p.fromNode && p.toNode) {
+                  var linkPercent = (typeof p.linkPercent === 'number') ? p.linkPercent : 0;
+                  return '<div style="padding: 5px;"><b style="color: ' + p.fromNode.color + ';">' + p.fromNode.name + '</b> → <b style="color: ' + p.toNode.color + ';">' + p.toNode.name + '</b><br/>' +
+                         '<span style="font-size: 15px; font-weight: bold;">Patients: ' + p.weight + '</span><br/>' +
+                         '<span style="font-size: 14px; color: #666;">' + linkPercent.toFixed(1) + '%</span></div>';
+                }
+                // Tooltip pour les nœuds
+                if (p.isNode) {
+                  var nid = p.id;
+                  if (!nid) {
+                    var match = (nodes || []).find(function(n){ return n.name === p.name; });
+                    nid = match ? match.id : undefined;
+                  }
+                  var percent = nid && nodePercentages[nid] ? nodePercentages[nid] : 0;
+                  var total = (typeof p.sum === 'number') ? p.sum : (nid && nodeCounts[nid] ? nodeCounts[nid] : 0);
+                  var color = p.color || '#333';
+                  return '<div style="padding: 5px;"><b style="color: ' + color + ';">' + (p.name || '') + '</b><br/>' +
+                         '<span style="font-size: 15px;">Total: ' + total + ' patients</span><br/>' +
+                         '<span style="font-size: 14px; color: #666;">' + percent.toFixed(1) + '%</span></div>';
+                }
+                return '';
+              }
+            },
+            series: [{
+              type: 'sankey',
+              name: 'Patient Flow',
+              keys: ['from', 'to', 'weight', 'color'],
+              data: sankeyData,
+              nodes: nodes.map(function(n) {
+                return {
+                  id: n.id,
+                  name: n.name,
+                  column: n.column,
+                  color: n.color
+                };
+              }),
+              linkColorMode: 'from',
+              colorByPoint: false
+            }]
+          });
+          
+          var sankeyEl = document.getElementById(sankeyMountId);
+          if (sankeyEl) {
+            // Permettre l'interactivité tactile tout en gardant le scroll vertical
+            sankeyEl.style.touchAction = 'pan-y pinch-zoom';
+          }
+        }
+      }, 100);
+
+      return chartsContainer;
     },
     toggleReadMore: function(n_clicks) {
       var opened = ((n_clicks || 0) % 2) === 1;
@@ -404,8 +954,8 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
       }
 
       var content_style = opened
-        ? { maxHeight: '600px', overflowY: 'hidden', textAlign: 'justify', opacity: 1 }
-        : { maxHeight: '40px',  overflowY: 'hidden', textAlign: 'justify', opacity: 1 };
+        ? { maxHeight: '600px', textAlign: 'justify', opacity: 1 }
+        : { maxHeight: '40px',  textAlign: 'justify', opacity: 1 };
 
       var gradient_style = { opacity: opened ? 0 : 1 };
       var bar_style = window.dash_clientside && window.dash_clientside.no_update ? window.dash_clientside.no_update : null;
