@@ -396,6 +396,14 @@ body {
     margin: 1%;
 }
 
+/* Favoriser le défilement vertical sur mobile pour Highcharts */
+.chart-card .highcharts-container,
+.chart-card svg.highcharts-root {
+    touch-action: pan-y;
+    -ms-touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+}
+
 /* Data Table */
 .dash-table-container {
     margin: 20px 0;

@@ -156,18 +156,45 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         if (headerCounts === null) { headerCounts = counts.slice(); }
 
         var mountId = 'hc_' + p.replace(/[^a-zA-Z0-9_]/g,'_');
+        var vw = (typeof window !== 'undefined') ? window.innerWidth : 1024;
+        var isMobile = vw <= 768;
         charts.push({
           'type': 'Div', 'namespace': 'dash_html_components',
-          'props': { 'className': 'chart-card', 'style': { 'width': '48%', 'display': 'inline-block', 'margin': '1%' }, 'children': [
-            { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'id': mountId, 'style': { 'height': '300px' } } }
+          'props': { 'className': 'chart-card', 'style': isMobile ? { 'width': '100%', 'display': 'block', 'margin': '8px 0' } : { 'width': '48%', 'display': 'inline-block', 'margin': '1%' }, 'children': [
+            { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'id': mountId, 'style': { 'height': isMobile ? '260px' : '300px' } } }
           ]}
         });
 
         // Monter Highcharts (imperatif) après le rendu
         setTimeout(function(){
           if (window.Highcharts) {
-            window.Highcharts.chart(mountId, {
-              chart: { type: 'boxplot', backgroundColor: 'white', spacingLeft: 0, spacingRight: 10 },
+            var vw2 = (typeof window !== 'undefined') ? window.innerWidth : 1024;
+            var isMobile2 = vw2 <= 768;
+            var chart = window.Highcharts.chart(mountId, {
+              chart: { 
+                type: 'boxplot', 
+                backgroundColor: 'white', 
+                spacingLeft: 0, 
+                spacingRight: 10,
+                // Empêcher Highcharts d'intercepter le scroll vertical sur mobile
+                panning: false,
+                pinchType: '',
+                zooming: { enabled: false }
+              },
+              plotOptions: {
+                series: {
+                  enableMouseTracking: !isMobile2 ? true : false,
+                  stickyTracking: false,
+                  states: { hover: { enabled: false } },
+                  animation: false
+                },
+                boxplot: {
+                  enableMouseTracking: !isMobile2 ? true : false
+                },
+                scatter: {
+                  enableMouseTracking: false
+                }
+              },
               title: { text: p, style: { fontSize: '14px' } },
               xAxis: { categories: CATEGORY_SHORT, title: { text: null } },
               yAxis: { title: { text: null } },
@@ -175,6 +202,8 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
               legend: { enabled: false },
               credits: { enabled: false },
               tooltip: { 
+                enabled: !isMobile2,
+                followTouchMove: false,
                 formatter: function(){
                   // Arrondi adaptatif: max 3 décimales selon l'ordre de grandeur
                   function fmt(v){
@@ -212,6 +241,14 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                 }
               ]
             });
+
+            // Appliquer une règle CSS runtime pour favoriser le scroll vertical
+            if (chart && chart.container) {
+              try {
+                chart.container.style.touchAction = 'pan-y';
+                chart.container.style.webkitOverflowScrolling = 'touch';
+              } catch (e) {}
+            }
           }
         }, 0);
 
