@@ -296,7 +296,8 @@ app.layout = html.Div([
                             {"label": "Older adults (≥65 years)", "value": "Older adults (≥65 years)"}
                         ],
                         placeholder="Select age category",
-                        className="dropdown"
+                        className="dropdown",
+                        searchable=False
                     )
                 ], className="input-group"),
                 
@@ -311,7 +312,8 @@ app.layout = html.Div([
                             {"label": "Obesity (≥30 kg/m²)", "value": "Obesity (≥30 kg/m²)"}
                         ],
                         placeholder="Select BMI category",
-                        className="dropdown"
+                        className="dropdown",
+                        searchable=False
                     )
                 ], className="input-group"),
                 
@@ -350,7 +352,8 @@ app.layout = html.Div([
                     id="category-dropdown",
                     options=[{"label": cat, "value": cat} for cat in BIOMARKER_CATEGORIES.keys()],
                     value="Lipid & Heart profile",
-                    className="dropdown"
+                    className="dropdown",
+                    searchable=False
                 )
             ], className="category-selector")
         ], className="category-panel"),

@@ -185,7 +185,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                 series: {
                   enableMouseTracking: !isMobile2 ? true : false,
                   stickyTracking: false,
-                  states: { hover: { enabled: false } },
+                  states: { hover: { enabled: true } },
                   animation: false
                 },
                 boxplot: {
