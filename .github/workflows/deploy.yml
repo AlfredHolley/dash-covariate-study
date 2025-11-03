@@ -34,7 +34,7 @@ jobs:
             echo "🚀 Début du déploiement..."
             
             # Aller dans le répertoire de l'application
-            cd /var/www/dash-app || cd ~/dash-app || { echo "❌ Répertoire non trouvé"; exit 1; }
+            cd /var/www/dash-covariate-study
             
             # Afficher le statut git actuel
             echo "📊 Statut Git:"
@@ -98,7 +98,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            cd /var/www/dash-app || cd ~/dash-app
+            cd /var/www/dash-covariate-study
             
             DOCKER_COMPOSE_CMD="docker compose"
             if ! $DOCKER_COMPOSE_CMD version &> /dev/null; then
