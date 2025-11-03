@@ -344,6 +344,25 @@ app.layout = html.Div([
         # Section Cohort (statistiques descriptives de la cohorte filtrée)
         html.Div([
             html.H3("Patient profile", style={"marginBottom": "10px"}),
+            # Nav duale pour sélectionner les deux variables du Sankey
+            dcc.Store(id="sankey-var-a", data="gender"),
+            dcc.Store(id="sankey-var-b", data="fasting"),
+            html.Div([
+                html.Div([
+                    html.Span("From:", style={"marginRight": "10px"}),
+                    html.Button("Age", id="sankey-a-age", n_clicks_timestamp=0, className="cohort-tab-btn"),
+                    html.Button("BMI", id="sankey-a-bmi", n_clicks_timestamp=0, className="cohort-tab-btn"),
+                    html.Button("Gender", id="sankey-a-gender", n_clicks_timestamp=1, className="cohort-tab-btn"),
+                    html.Button("Fasting duration", id="sankey-a-fasting", n_clicks_timestamp=0, className="cohort-tab-btn"),
+                ], className="cohort-nav", style={"marginBottom": "6px"}),
+                html.Div([
+                    html.Span("To:", style={"marginRight": "10px"}),
+                    html.Button("Age", id="sankey-b-age", n_clicks_timestamp=0, className="cohort-tab-btn"),
+                    html.Button("BMI", id="sankey-b-bmi", n_clicks_timestamp=0, className="cohort-tab-btn"),
+                    html.Button("Gender", id="sankey-b-gender", n_clicks_timestamp=0, className="cohort-tab-btn"),
+                    html.Button("Fasting duration", id="sankey-b-fasting", n_clicks_timestamp=1, className="cohort-tab-btn"),
+                ], className="cohort-nav", style={"marginBottom": "10px"}),
+            ]),
             dcc.Loading(
                 id="loading-cohort-stats",
                 type="default",
@@ -436,6 +455,8 @@ app.clientside_callback(
     Input("age-input", "value"),
     Input("bmi-input", "value"),
     Input("sex-input", "data"),
+    Input("sankey-var-a", "data"),
+    Input("sankey-var-b", "data"),
 )
 
 # Switch charts grouping tab
@@ -457,6 +478,66 @@ app.clientside_callback(
     Output("grp-btn-bmi", "className"),
     Output("grp-btn-age", "className"),
     Input("grouping-tab", "data")
+)
+
+# Switch Sankey variable A (from)
+app.clientside_callback(
+    ClientsideFunction(namespace='ui', function_name='switchSankeyVarA'),
+    Output("sankey-var-a", "data"),
+    Input("sankey-a-age", "n_clicks_timestamp"),
+    Input("sankey-a-bmi", "n_clicks_timestamp"),
+    Input("sankey-a-gender", "n_clicks_timestamp"),
+    Input("sankey-a-fasting", "n_clicks_timestamp"),
+    State("sankey-var-a", "data"),
+    State("sankey-var-b", "data")
+)
+
+app.clientside_callback(
+    ClientsideFunction(namespace='ui', function_name='updateSankeyVarAClasses'),
+    Output("sankey-a-age", "className"),
+    Output("sankey-a-bmi", "className"),
+    Output("sankey-a-gender", "className"),
+    Output("sankey-a-fasting", "className"),
+    Input("sankey-var-a", "data")
+)
+
+app.clientside_callback(
+    ClientsideFunction(namespace='ui', function_name='updateSankeyVarADisabled'),
+    Output("sankey-a-age", "disabled"),
+    Output("sankey-a-bmi", "disabled"),
+    Output("sankey-a-gender", "disabled"),
+    Output("sankey-a-fasting", "disabled"),
+    Input("sankey-var-b", "data")
+)
+
+# Switch Sankey variable B (to)
+app.clientside_callback(
+    ClientsideFunction(namespace='ui', function_name='switchSankeyVarB'),
+    Output("sankey-var-b", "data"),
+    Input("sankey-b-age", "n_clicks_timestamp"),
+    Input("sankey-b-bmi", "n_clicks_timestamp"),
+    Input("sankey-b-gender", "n_clicks_timestamp"),
+    Input("sankey-b-fasting", "n_clicks_timestamp"),
+    State("sankey-var-b", "data"),
+    State("sankey-var-a", "data")
+)
+
+app.clientside_callback(
+    ClientsideFunction(namespace='ui', function_name='updateSankeyVarBClasses'),
+    Output("sankey-b-age", "className"),
+    Output("sankey-b-bmi", "className"),
+    Output("sankey-b-gender", "className"),
+    Output("sankey-b-fasting", "className"),
+    Input("sankey-var-b", "data")
+)
+
+app.clientside_callback(
+    ClientsideFunction(namespace='ui', function_name='updateSankeyVarBDisabled'),
+    Output("sankey-b-age", "disabled"),
+    Output("sankey-b-bmi", "disabled"),
+    Output("sankey-b-gender", "disabled"),
+    Output("sankey-b-fasting", "disabled"),
+    Input("sankey-var-a", "data")
 )
 
 def create_category_results(filtered_df, category, parameters):
