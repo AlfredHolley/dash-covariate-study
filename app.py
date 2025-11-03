@@ -218,7 +218,7 @@ app.index_string = '''
 <html>
     <head>
         {%metas%}
-        <title>Buchinger Science - Data</title>
+        <title>Buchinger TEST - Data</title>
         <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
         <script src="https://code.highcharts.com/highcharts.js"></script>

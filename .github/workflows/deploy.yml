@@ -1,0 +1,115 @@
+name: Déploiement VPS
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:  # Permet de déclencher manuellement depuis GitHub
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: 🧪 Tests pré-déploiement (optionnel)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m py_compile app.py
+          echo "✅ Tests de syntaxe réussis"
+
+      - name: 🔐 Déploiement sur VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -e
+            echo "🚀 Début du déploiement..."
+            
+            # Aller dans le répertoire de l'application
+            cd /var/www/dash-app || cd ~/dash-app || { echo "❌ Répertoire non trouvé"; exit 1; }
+            
+            # Afficher le statut git actuel
+            echo "📊 Statut Git:"
+            git status
+            
+            # Sauvegarder les changements locaux non commités (optionnel)
+            git stash || true
+            
+            # Récupérer les dernières modifications
+            echo "⬇️ Récupération des changements..."
+            git fetch origin
+            
+            # Pull la branche principale
+            git pull origin main || git pull origin master
+            
+            # Afficher le dernier commit déployé
+            echo "✅ Dernier commit déployé:"
+            git log -1 --oneline
+            
+            # Vérifier que docker-compose est disponible
+            if ! command -v docker-compose &> /dev/null && ! command -v docker &> /dev/null; then
+              echo "❌ Docker/Docker Compose non installé"
+              exit 1
+            fi
+            
+            # Utiliser docker compose (nouvelle syntaxe) ou docker-compose (ancienne)
+            DOCKER_COMPOSE_CMD="docker compose"
+            if ! $DOCKER_COMPOSE_CMD version &> /dev/null; then
+              DOCKER_COMPOSE_CMD="docker-compose"
+            fi
+            
+            echo "🐳 Reconstruction et redémarrage des conteneurs..."
+            
+            # Arrêter les conteneurs existants
+            $DOCKER_COMPOSE_CMD down || true
+            
+            # Rebuild les images (sans cache pour garantir la dernière version)
+            $DOCKER_COMPOSE_CMD build --no-cache
+            
+            # Démarrer les conteneurs
+            $DOCKER_COMPOSE_CMD up -d
+            
+            # Attendre un peu pour que les conteneurs démarrent
+            sleep 5
+            
+            # Vérifier que les conteneurs sont en cours d'exécution
+            echo "📦 Statut des conteneurs:"
+            $DOCKER_COMPOSE_CMD ps
+            
+            # Afficher les dernières lignes des logs
+            echo "📋 Derniers logs:"
+            $DOCKER_COMPOSE_CMD logs --tail=50
+            
+            echo "✅ Déploiement terminé avec succès!"
+
+      - name: ✅ Vérification post-déploiement
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            cd /var/www/dash-app || cd ~/dash-app
+            
+            DOCKER_COMPOSE_CMD="docker compose"
+            if ! $DOCKER_COMPOSE_CMD version &> /dev/null; then
+              DOCKER_COMPOSE_CMD="docker-compose"
+            fi
+            
+            # Vérifier que le conteneur est bien en cours d'exécution
+            if $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
+              echo "✅ Application déployée et en cours d'exécution"
+            else
+              echo "⚠️ Attention: Le conteneur pourrait ne pas être en cours d'exécution"
+              exit 1
+            fi
+

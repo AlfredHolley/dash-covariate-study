@@ -5,3 +5,10 @@ services:
       - "8050:8050"
     container_name: dash-buchinger-app
     restart: unless-stopped
+    networks:
+      - shared-proxy
+    environment:
+      - PYTHONUNBUFFERED=1
+networks:
+  shared-proxy:
+    external: true
