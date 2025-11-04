@@ -22,11 +22,29 @@ df_wide = pd.read_csv("dash_dataset_wide.csv", index_col=0, parse_dates=False)
 
 # Plus de statistiques p-valeurs utilisées (df_stats supprimé)
 
+# Charger les seuils de référence depuis l'Excel
+try:
+    df_thresholds = pd.read_excel("biomarker_reference_ranges_english.xlsx")
+    BIOMARKER_THRESHOLDS = {}
+    for _, row in df_thresholds.iterrows():
+        biomarker = row['Biomarker']
+        low = row['Low threshold']
+        high = row['High threshold']
+        BIOMARKER_THRESHOLDS[biomarker] = {
+            'low': low if pd.notna(low) else None,
+            'high': high if pd.notna(high) else None
+        }
+except Exception as e:
+    print(f"Warning: Could not load biomarker thresholds: {e}")
+    BIOMARKER_THRESHOLDS = {}
+
 BIOMARKER_CATEGORIES = {
-    'Hepatic health': ['ALP [U/L]', 'GGT [U/L]', 'GOT AST [U/L]', 'GPT ALT [U/L]'],
-    'Lipid & Heart profile': ['LDL [mg/dL]', 'TC [mg/dL]', 'HDL [mg/dL]', 'SBP [mmHg]', 'DBP [mmHg]'],
-    'Glucose control': ['glucose [mg/dL]', 'HBA1C [%]'],
-    'Body composition': ['BMI [kg/m²]', 'weight [kg]', 'WC [cm]']
+    'Hepatic health': ['ALP [U/L]', 'GGT [U/L]', 'GOT AST [U/L]', 'GPT ALT [U/L]', 'FLI'],
+    'Cardiometabolic profile': ['TC [mg/dL]', 'LDL [mg/dL]', 'HDL [mg/dL]', 'TG [mg/dL]', 'SBP [mmHg]', 'DBP [mmHg]', 'glucose [mg/dL]', 'HBA1C [%]', 'TSH [µU/mL]'],
+    'Body composition': ['BMI [kg/m²]', 'weight [kg]', 'WC [cm]'],
+    'Renal function & Electrolytes': ['creatinine [mg/dL]', 'GFR [mL/min/1.73m²]', 'urea [mg/dL]', 'uric acid [mg/dL]', 'K [mmol/L]', 'Na [mmol/L]', 'Mg [mg/dL]', 'Ca [mg/dL]'],
+    'Blood & Immunity': ['quick [%]','erythrocytes [T/L]', 'hemoglobin [g/dL]', 'hematocrit [%]', 'thrombocytes [G/L]', 'MCV [fL]', 'MCH [pg]', 'MCHC [g/dL]'],
+    'Inflammation': ['CRP hs [mg/L]', 'ESR 1H [mm/h]', 'ESR 2H [mm/h]', 'leukocytes [G/L]'],
 }
 
 # Tous les biomarqueurs disponibles
@@ -53,7 +71,7 @@ def format_parameter_display_name(parameter):
         'HBA1C [%]': 'HBA1C (%)',
         'BMI [kg/m²]': 'BMI (kg/m²)',
         'weight [kg]': 'Weight (kg)',
-        'WC [cm]': 'WC (cm)'
+        'WC [cm]': 'Waist Circ. (cm)'
     }
     
     # Si un remplacement spécifique existe, l'utiliser
@@ -298,9 +316,10 @@ app.layout = html.Div([
                     dcc.Dropdown(
                         id="category-dropdown",
                         options=[{"label": cat, "value": cat} for cat in BIOMARKER_CATEGORIES.keys()],
-                        value="Lipid & Heart profile",
+                        value="Cardiometabolic profile",
                         className="dropdown",
-                        searchable=False
+                        searchable=False,
+                        clearable=False
                     )
                 ], className="input-group"),
                 # Parameter dropdown (will be populated based on category)
@@ -308,10 +327,11 @@ app.layout = html.Div([
                     html.Label("Parameter"),
                     dcc.Dropdown(
                         id="parameter-dropdown",
-                        options=[],
-                        placeholder="Select a category first",
+                        options=[{"label": param, "value": param} for param in BIOMARKER_CATEGORIES["Cardiometabolic profile"]],
+                        value="glucose [mg/dL]",
                         className="dropdown",
-                        searchable=False
+                        searchable=False,
+                        clearable=False
                     )
                 ], className="input-group")
             ], className="controls-grid")
@@ -327,6 +347,20 @@ app.layout = html.Div([
                 html.Button("By BMI categories", id="grp-btn-bmi", n_clicks=0, className="cohort-tab-btn"),
                 html.Button("By Age categories", id="grp-btn-age", n_clicks=0, className="cohort-tab-btn"),
             ], className="cohort-nav", style={"marginBottom": "10px"}),
+            # Baseline coloring controls
+            html.Div([
+                html.Div([
+                    html.Span("Color by patient baseline", style={"marginRight": "10px", "fontSize": "14px", "fontWeight": "500"}),
+                    dcc.Checklist(
+                        id="baseline-color-toggle",
+                        options=[{"label": "", "value": "enabled"}],
+                        value=[],
+                        style={"display": "inline-block"}
+                    ),
+                    html.Div(id="baseline-category-badges", style={"display": "inline-flex", "gap": "8px", "marginLeft": "15px", "alignItems": "center"})
+                ], style={"display": "flex", "justifyContent": "flex-end", "alignItems": "center", "marginBottom": "10px"})
+            ], style={"marginBottom": "10px"}),
+            dcc.Store(id="baseline-categories", data={"categories": []}),
             html.Div(id="results-info", className="results-info"),
             dcc.Loading(
                 id="loading-charts",
@@ -432,6 +466,76 @@ def update_parameter_options(category):
         return options, default_value
     return [], None
 
+# Callback pour générer les catégories baseline et les pastilles selon le paramètre
+@app.callback(
+    Output("baseline-categories", "data"),
+    Output("baseline-category-badges", "children"),
+    Input("parameter-dropdown", "value")
+)
+def update_baseline_categories(parameter):
+    if not parameter or parameter not in BIOMARKER_THRESHOLDS:
+        return {"categories": []}, []
+    
+    thresholds = BIOMARKER_THRESHOLDS[parameter]
+    has_low = thresholds['low'] is not None
+    has_high = thresholds['high'] is not None
+    
+    if has_low and has_high:
+        # Cas avec too low / normal / too high
+        categories = ["too_low", "normal", "too_high"]
+        badges = [
+            html.Span("Too Low", style={
+                "padding": "4px 8px",
+                "borderRadius": "4px",
+                "fontSize": "12px",
+                "backgroundColor": "#f5a623",
+                "color": "white",
+                "fontWeight": "500"
+            }),
+            html.Span("Normal", style={
+                "padding": "4px 8px",
+                "borderRadius": "4px",
+                "fontSize": "12px",
+                "backgroundColor": "#50e3c2",
+                "color": "white",
+                "fontWeight": "500"
+            }),
+            html.Span("Too High", style={
+                "padding": "4px 8px",
+                "borderRadius": "4px",
+                "fontSize": "12px",
+                "backgroundColor": "#d0021b",
+                "color": "white",
+                "fontWeight": "500"
+            })
+        ]
+    elif has_high:
+        # Cas avec normal / at risk
+        categories = ["normal", "at_risk"]
+        badges = [
+            html.Span("Normal", style={
+                "padding": "4px 8px",
+                "borderRadius": "4px",
+                "fontSize": "12px",
+                "backgroundColor": "#50e3c2",
+                "color": "white",
+                "fontWeight": "500"
+            }),
+            html.Span("At Risk", style={
+                "padding": "4px 8px",
+                "borderRadius": "4px",
+                "fontSize": "12px",
+                "backgroundColor": "#d0021b",
+                "color": "white",
+                "fontWeight": "500"
+            })
+        ]
+    else:
+        categories = []
+        badges = []
+    
+    return {"categories": categories, "thresholds": thresholds}, badges
+
 # Callback client pour l'analyse (figures, tableau, infos)
 app.clientside_callback(
     ClientsideFunction(namespace='ui', function_name='updateAnalysis'),
@@ -445,6 +549,8 @@ app.clientside_callback(
     Input("sex-input", "data"),
     Input("category-dropdown", "value"),
     Input("parameter-dropdown", "value"),
+    Input("baseline-categories", "data"),
+    Input("baseline-color-toggle", "value"),
 )
 
 # Cohort statistics section (Sankey diagram)
@@ -663,4 +769,4 @@ Le callback serveur est remplacé par un callback client pour les performances.
 """
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True, port=8050)
+    app.run(host="0.0.0.0", debug=False, port=8050)

@@ -38,7 +38,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
       var keys = ['age','bmi','gender'];
       return keys.map(function(k){ return k === (active||'age') ? base + ' selected' : base; });
     },
-    updateAnalysis: function(data, groupingTab, age_cat, bmi_cat, sex, category, parameter) {
+    updateAnalysis: function(data, groupingTab, age_cat, bmi_cat, sex, category, parameter, baselineCategories, baselineColorToggle) {
       if (!data || !category || !parameter) {
         return [
           { 'props': { 'children': [{'props': {'children': 'Select a category and parameter to start the analysis', 'style': {'color': '#6c757d', 'marginBottom': '20px', 'textAlign': 'center'}}, 'type': 'H4', 'namespace': 'dash_html_components'}] }, 'type': 'Div', 'namespace': 'dash_html_components' },
@@ -48,23 +48,25 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
       }
 
       var CATEGORIES = {
-        'Hepatic health': ['ALP [U/L]', 'GGT [U/L]', 'GOT AST [U/L]', 'GPT ALT [U/L]'],
-        'Lipid & Heart profile': ['LDL [mg/dL]', 'TC [mg/dL]', 'HDL [mg/dL]', 'SBP [mmHg]', 'DBP [mmHg]'],
-        'Glucose control': ['glucose [mg/dL]', 'HBA1C [%]'],
-        'Body composition': ['BMI [kg/m²]', 'weight [kg]', 'WC [cm]']
+        'Hepatic health': ['ALP [U/L]', 'GGT [U/L]', 'GOT AST [U/L]', 'GPT ALT [U/L]', 'FLI'],
+        'Cardiometabolic profile': ['TC [mg/dL]', 'LDL [mg/dL]',  'HDL [mg/dL]','TG [mg/dL]', 'SBP [mmHg]', 'DBP [mmHg]', 'glucose [mg/dL]', 'HBA1C [mmol/mol]', 'TSH [µU/mL]'],
+        'Body composition': ['BMI [kg/m²]', 'weight [kg]', 'WC [cm]'],
+        'Renal function & Electrolytes': ['creatinine [mg/dL]', 'GFR [mL/min/1.73m²]', 'urea [mg/dL]', 'uric acid [mg/dL]', 'K [mmol/L]', 'Na [mmol/L]', 'Mg [mg/dL]', 'Ca [mg/dL]'],
+        'Blood & Immunity': [ 'quick [%]', 'erythrocytes [T/L]', 'hemoglobin [g/dL]', 'hematocrit [%]', 'thrombocytes [G/L]','MCV [fL]', 'MCH [pg]', 'MCHC [g/dL]'],
+        'Inflammation': ['CRP hs [mg/L]', 'ESR 1H [mm/h]', 'ESR 2H [mm/h]', 'leukocytes [G/L]'],
       };
       // Grouping config
       var grouping = (groupingTab || 'duration');
-      var xField, CATEGORY_ORDER, CATEGORY_SHORT, DISPLAY_MAP;
+      var xField, CATEGORY_ORDER, CATEGORY_SHORT, CATEGORY_LABELS, DISPLAY_MAP;
       var CAT_COLORS;
       if (grouping === 'gender') {
-        xField = 'sex'; CATEGORY_ORDER = ['M','F']; CATEGORY_SHORT = ['Male','Female']; DISPLAY_MAP = {'M':'Male','F':'Female'}; CAT_COLORS = ['#4a90e2','#f45b69'];
+        xField = 'sex'; CATEGORY_ORDER = ['M','F']; CATEGORY_SHORT = ['Male','Female']; CATEGORY_LABELS = ['<b>Male</b>','<b>Female</b>']; DISPLAY_MAP = {'M':'Male','F':'Female'}; CAT_COLORS = ['#4a90e2','#f45b69'];
       } else if (grouping === 'bmi') {
-        xField = 'BMI_cat'; CATEGORY_ORDER = ['Normal (18–24.9 kg/m²)','Overweight (25.0–29.9 kg/m²)','Obesity (≥30 kg/m²)']; CATEGORY_SHORT = CATEGORY_ORDER.slice(); CAT_COLORS = ['#50e3c2','#f5a623','#d0021b'];
+        xField = 'BMI_cat'; CATEGORY_ORDER = ['Normal (18–24.9 kg/m²)','Overweight (25.0–29.9 kg/m²)','Obesity (≥30 kg/m²)']; CATEGORY_SHORT = ['Normal', 'Overweight', 'Obesity']; CATEGORY_LABELS = ['<b>Normal</b><br/>(18–24.9)', '<b>Overweight</b><br/>(25.0–29.9)', '<b>Obesity</b><br/>(≥30)']; CAT_COLORS = ['#50e3c2','#f5a623','#d0021b'];
       } else if (grouping === 'age') {
-        xField = 'age_cat'; CATEGORY_ORDER = ['Young adults (18-34 years)','Middle age (35-64 years)','Older adults (≥65 years)']; CATEGORY_SHORT = ['18-34','35-64','≥65']; CAT_COLORS = ['#7ed321','#4a90e2','#bd10e0'];
+        xField = 'age_cat'; CATEGORY_ORDER = ['Young adults (18-34 years)','Middle age (35-64 years)','Older adults (≥65 years)']; CATEGORY_SHORT = ['18-34','35-64','65+']; CATEGORY_LABELS = ['<b>Young Adults</b><br/>(18-34)','<b>Middle Adults</b><br/>(35-64)','<b>Older Adults</b><br/>(65+)']; CAT_COLORS = ['#7ed321','#4a90e2','#bd10e0'];
       } else {
-        xField = 'length_of_fasting_cat'; CATEGORY_ORDER = ['3-7 days', '8-12 days', '13-17 days', '18+ days']; CATEGORY_SHORT = ['3-7','8-12','13-17','18+']; CAT_COLORS = ['#4a90e2','#50e3c2','#f5a623','#d0021b'];
+        xField = 'length_of_fasting_cat'; CATEGORY_ORDER = ['3-7 days', '8-12 days', '13-17 days', '18+ days']; CATEGORY_SHORT = ['3-7','8-12','13-17','18+']; CATEGORY_LABELS = ['<b>3-7 days</b>', '<b>8-12 days</b>', '<b>13-17 days</b>', '<b>18+ days</b>']; CAT_COLORS = ['#4a90e2','#50e3c2','#f5a623','#d0021b'];
       }
 
       // Vérifier que le paramètre sélectionné est valide pour la catégorie
@@ -107,7 +109,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
       var headerCounts = null;
       var p = params[0]; // Un seul paramètre
       
-        var xs = []; var ys = [];
+        var xs = []; var ys = []; var patientIds = [];
         var perCat = {}; CATEGORY_ORDER.forEach(function(c){ perCat[c] = []; });
         Object.keys(byId).forEach(function(id){
           var rec = byId[id];
@@ -116,7 +118,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
             var delta = rec.post[p] - rec.pre[p];
             var cat = catKey;
             if (CATEGORY_ORDER.indexOf(cat) !== -1 && isFinite(delta)) {
-              xs.push(cat); ys.push(delta);
+              xs.push(cat); ys.push(delta); patientIds.push(id);
               perCat[cat].push(delta);
               totalIds.add(id);
             }
@@ -126,7 +128,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         // Filtrer les outliers (z-score > 4) pour GPT, GOT et GGT
         var OUTLIER_PARAMS = { 'GOT AST [U/L]': true, 'GPT ALT [U/L]': true, 'GGT [U/L]': true };
         if (OUTLIER_PARAMS[p]) {
-          var xs2 = []; var ys2 = [];
+          var xs2 = []; var ys2 = []; var patientIds2 = [];
           CATEGORY_ORDER.forEach(function(cat){
             var arr = perCat[cat];
             if (arr.length > 1) {
@@ -136,10 +138,20 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
               var filtered = (sd > 0) ? arr.filter(function(v){ return Math.abs((v - m)/sd) <= 3.5; }) : arr;
               perCat[cat] = filtered;
             }
-            // reconstruire xs/ys depuis perCat
-            (perCat[cat] || []).forEach(function(v){ xs2.push(cat); ys2.push(v); });
+            // reconstruire xs/ys/patientIds depuis perCat en gardant la correspondance
+            var catIndices = [];
+            for (var j = 0; j < xs.length; j++) {
+              if (xs[j] === cat) catIndices.push(j);
+            }
+            (perCat[cat] || []).forEach(function(v, idx){
+              xs2.push(cat);
+              ys2.push(v);
+              if (catIndices[idx] !== undefined) {
+                patientIds2.push(patientIds[catIndices[idx]]);
+              }
+            });
           });
-          xs = xs2; ys = ys2;
+          xs = xs2; ys = ys2; patientIds = patientIds2;
         }
 
         // Préparer data Highcharts boxplot
@@ -162,11 +174,63 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         }
         var seriesData = CATEGORY_ORDER.map(function(cat){ return fiveNum(perCat[cat]); });
         var counts = CATEGORY_ORDER.map(function(cat){ return (perCat[cat] || []).length; });
+        
+        // Fonction pour classifier une valeur baseline selon les seuils
+        var classifyBaseline = function(value) {
+          if (!baselineCategories || !baselineCategories.thresholds || !baselineCategories.categories) {
+            return null;
+          }
+          var thresholds = baselineCategories.thresholds;
+          var cats = baselineCategories.categories;
+          var val = Number(value);
+          if (!isFinite(val)) return null;
+          
+          // Cas avec too low / normal / too high
+          if (cats.indexOf('too_low') !== -1 && cats.indexOf('normal') !== -1 && cats.indexOf('too_high') !== -1) {
+            if (thresholds.low !== null && val < thresholds.low) return 'too_low';
+            if (thresholds.high !== null && val > thresholds.high) return 'too_high';
+            return 'normal';
+          }
+          // Cas avec normal / at risk
+          else if (cats.indexOf('normal') !== -1 && cats.indexOf('at_risk') !== -1) {
+            if (thresholds.high !== null && val > thresholds.high) return 'at_risk';
+            return 'normal';
+          }
+          return null;
+        };
+        
+        // Couleurs pour les catégories baseline
+        var baselineColors = {
+          'too_low': '#f5a623',
+          'normal': '#50e3c2',
+          'too_high': '#d0021b',
+          'at_risk': '#d0021b'
+        };
+        
         // Points individuels pour jitter
         var scatterData = [];
+        var useBaselineColor = baselineColorToggle && baselineColorToggle.indexOf('enabled') !== -1;
         xs.forEach(function(cat, i){
           var idx = CATEGORY_ORDER.indexOf(cat);
-          if (idx >= 0 && isFinite(ys[i])) scatterData.push({ x: idx, y: ys[i], color: CAT_COLORS[idx] });
+          if (idx >= 0 && isFinite(ys[i])) {
+            var pointData = {
+              x: idx,
+              y: ys[i]
+            };
+            
+            // UNIQUEMENT si le toggle est activé, utiliser la couleur baseline
+            // Sinon, ne pas définir de couleur (Highcharts utilisera sa couleur par défaut uniforme)
+            if (useBaselineColor && patientIds[i] && byId[patientIds[i]] && byId[patientIds[i]].pre[p] !== undefined) {
+              var baselineCategory = classifyBaseline(byId[patientIds[i]].pre[p]);
+              if (baselineCategory && baselineColors[baselineCategory]) {
+                pointData.marker = {
+                  fillColor: baselineColors[baselineCategory]
+                };
+              }
+            }
+            
+            scatterData.push(pointData);
+          }
         });
         if (headerCounts === null) { headerCounts = counts.slice(); }
 
@@ -255,8 +319,21 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                   animation: { duration: 300 }
                 }
               },
-              xAxis: { categories: CATEGORY_SHORT, title: { text: null } },
-              yAxis: { title: { text: null } },
+              xAxis: { 
+                categories: CATEGORY_LABELS, 
+                title: { text: null },
+                labels: { useHTML: true }
+              },
+              yAxis: { 
+                title: { text: 'Changes (Post - Pre)' },
+                plotLines: [{
+                  value: 0,
+                  color: '#888888',
+                  dashStyle: 'dashed',
+                  width: 2.5,
+                  zIndex: 0
+                }]
+              },
               accessibility: { enabled: true },
               legend: { enabled: false },
               credits: { enabled: false },
@@ -305,7 +382,11 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                   type: 'scatter',
                   data: scatterData,
                   jitter: { x: 0.24, y: 0 },
-                  marker: { radius: 3.5, lineWidth: 0.5 },
+                  marker: { 
+                    radius: 3.5, 
+                    lineWidth: 0.5
+                  },
+                  colorByPoint: false,
                   opacity: 0.45,
                   tooltip: { enabled: false },
                   enableMouseTracking: true,
@@ -369,33 +450,32 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
             
             // Gérer le redimensionnement de la fenêtre pour mettre à jour `inverted`
             var resizeTimeout = null;
+            // Mémoriser l'état courant pour éviter des updates inutiles
+            chart._lastIsMobile = isMobile2;
             var handleResize = function() {
-              if (resizeTimeout) {
-                clearTimeout(resizeTimeout);
-              }
+              if (resizeTimeout) { clearTimeout(resizeTimeout); }
               resizeTimeout = setTimeout(function() {
                 if (chart && !chart.destroyed) {
                   var newVw = (typeof window !== 'undefined') ? window.innerWidth : 1024;
                   var newIsMobile = newVw <= 768;
+                  if (newIsMobile === chart._lastIsMobile) return; // rien à faire
+                  chart._lastIsMobile = newIsMobile;
                   var shouldBeInverted = !newIsMobile;
                   if (chart.options.chart.inverted !== shouldBeInverted) {
-                    chart.update({ chart: { inverted: shouldBeInverted } }, true);
-                    // Forcer un redraw complet après la mise à jour
-                    if (chart && chart.redraw) {
-                      chart.redraw();
-                    }
+                    (window.requestAnimationFrame || function(cb){return setTimeout(cb,0);})(function(){
+                      chart.update({ chart: { inverted: shouldBeInverted } }, true);
+                      if (chart && chart.redraw) { chart.redraw(); }
+                    });
                   }
                 }
-              }, 150); // Debounce de 150ms
+              }, 300); // Debounce de 300ms
             };
             
             // Ajouter le listener de resize
             if (typeof window !== 'undefined') {
-              window.addEventListener('resize', handleResize);
+              window.addEventListener('resize', handleResize, { passive: true });
               // Stocker le handler pour pouvoir le supprimer plus tard si nécessaire
-              if (chart) {
-                chart._resizeHandler = handleResize;
-              }
+              if (chart) { chart._resizeHandler = handleResize; }
             }
           }
         }, 0);
@@ -487,9 +567,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         }
       };
 
-      var info = { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'children': [
-        { 'type': 'H4', 'namespace': 'dash_html_components', 'props': { 'children': Array.from(new Set(Array.from(totalIds))).length + ' fasters', 'className': 'results-info-title' } }
-      ]}};
+      var info = { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'children': [] }};
 
       var chartsWrap = { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'style': { 'display': 'flex', 'flexWrap': 'wrap', 'justifyContent': 'center' }, 'children': charts }};
       var tableWrap = { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'children': [
@@ -808,6 +886,12 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                 window.removeEventListener('resize', existingChart._resizeHandler);
               }
             }
+            // Nettoyer le listener de maxHeight si il existe
+            if (existingChart._maxHeightHandler) {
+              if (typeof window !== 'undefined') {
+                window.removeEventListener('resize', existingChart._maxHeightHandler);
+              }
+            }
             existingChart.destroy();
           }
           
@@ -922,32 +1006,30 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
           
           // Gérer le redimensionnement de la fenêtre pour mettre à jour `inverted` du Sankey
           var sankeyResizeTimeout = null;
+          sankeyChart._lastIsWide = (vw2 > 760);
           var handleSankeyResize = function() {
-            if (sankeyResizeTimeout) {
-              clearTimeout(sankeyResizeTimeout);
-            }
+            if (sankeyResizeTimeout) { clearTimeout(sankeyResizeTimeout); }
             sankeyResizeTimeout = setTimeout(function() {
               if (sankeyChart && !sankeyChart.destroyed) {
                 var newVw = (typeof window !== 'undefined') ? window.innerWidth : 1024;
                 var shouldBeInverted = newVw > 760;
+                if (shouldBeInverted === sankeyChart._lastIsWide) return;
+                sankeyChart._lastIsWide = shouldBeInverted;
                 if (sankeyChart.options.chart.inverted !== shouldBeInverted) {
-                  sankeyChart.update({ chart: { inverted: shouldBeInverted } }, true);
-                  // Forcer un redraw complet après la mise à jour
-                  if (sankeyChart && sankeyChart.redraw) {
-                    sankeyChart.redraw();
-                  }
+                  (window.requestAnimationFrame || function(cb){return setTimeout(cb,0);})(function(){
+                    sankeyChart.update({ chart: { inverted: shouldBeInverted } }, true);
+                    if (sankeyChart && sankeyChart.redraw) { sankeyChart.redraw(); }
+                  });
                 }
               }
-            }, 150); // Debounce de 150ms
+            }, 50); // Debounce de 300ms
           };
           
           // Ajouter le listener de resize
           if (typeof window !== 'undefined') {
-            window.addEventListener('resize', handleSankeyResize);
+            window.addEventListener('resize', handleSankeyResize, { passive: true });
             // Stocker le handler pour pouvoir le supprimer plus tard si nécessaire
-            if (sankeyChart) {
-              sankeyChart._resizeHandler = handleSankeyResize;
-            }
+            if (sankeyChart) { sankeyChart._resizeHandler = handleSankeyResize; }
           }
           
           var sankeyEl = document.getElementById(sankeyMountId);
@@ -969,8 +1051,22 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
             
             // Ajouter le listener de resize
             if (typeof window !== 'undefined') {
-              window.addEventListener('resize', updateSankeyMaxHeight);
+              window.addEventListener('resize', updateSankeyMaxHeight, { passive: true });
+              // Stocker le handler pour cleanup lors de la destruction
+              if (sankeyChart) { sankeyChart._resizeMaxHeightHandler = updateSankeyMaxHeight; }
             }
+          }
+
+          // Cleanup listeners si on recrée/détruit ce graphique
+          if (existingChart) {
+            try {
+              if (existingChart._resizeHandler && typeof window !== 'undefined') {
+                window.removeEventListener('resize', existingChart._resizeHandler);
+              }
+              if (existingChart._resizeMaxHeightHandler && typeof window !== 'undefined') {
+                window.removeEventListener('resize', existingChart._resizeMaxHeightHandler);
+              }
+            } catch(e) {}
           }
         }
       }, 100);
