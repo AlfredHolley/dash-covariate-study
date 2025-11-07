@@ -202,18 +202,17 @@ body {
     transition: transform 0.2s ease;
 }
 
-/* Icône FontAwesome via pseudo-élément pour éviter la dépendance React côté client */
+/* Icône via caractère Unicode standard (triangle) */
 .readmore-btn::after {
-    content: "\f0d8"; /* fa-caret-up */
-    font-family: FontAwesome;
+    content: "▼"; /* Triangle pointant vers le bas quand fermé */
     display: inline-block;
     margin-left: 6px;
-    transition: none; /* rotation instantanée pour éviter le décalage visuel */
-    transform: rotate(180deg); /* fermé: pointe vers le bas */
+    transition: transform 0.2s ease;
+    font-size: 0.8em;
 }
 
 .readmore-btn.opened::after {
-    transform: rotate(0deg); /* ouvert: pointe vers le haut */
+    content: "▲"; /* Triangle pointant vers le haut quand ouvert */
 }
 
 .readmore-btn:hover {
@@ -422,9 +421,8 @@ body {
 /* Favoriser le défilement vertical sur mobile pour Highcharts */
 .chart-card .highcharts-container,
 .chart-card svg.highcharts-root {
-    touch-action: pan-y;
     -ms-touch-action: pan-y;
-    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 }
 
 .dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner.dash-fill-width .cell table {
