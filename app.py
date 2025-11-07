@@ -246,10 +246,6 @@ app.index_string = '''
 <!DOCTYPE html>
 <html>
     <head>
-        <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://code.highcharts.com https://cdnjs.cloudflare.com https://www.googletagmanager.com https://www.google-analytics.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://unpkg.com; frame-src 'self' https://www.googletagmanager.com; connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com;">
-        <!-- Google Tag Manager -->
-        <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-MJFVRND6');</script>
-        <!-- End Google Tag Manager -->
         {%metas%}
         <title>Buchinger Science - Data</title>
         <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
@@ -265,10 +261,6 @@ app.index_string = '''
         {%css%}
     </head>
     <body>
-        <!-- Google Tag Manager (noscript) -->
-        <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MJFVRND6"
-        height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-        <!-- End Google Tag Manager (noscript) -->
         {%app_entry%}
         <footer>
             {%config%}
@@ -439,6 +431,7 @@ app.layout = html.Div([
                 ], style={"padding": "10px", "paddingBottom": "0px"})
             ], style={"marginBottom": "10px"}),
             dcc.Store(id="baseline-range-store", data={"min": 0, "max": 100}),
+            html.Div(id="results-info", className="results-info"),
             dcc.Loading(
                 id="loading-charts",
                 type="default",
@@ -788,6 +781,6 @@ Le callback serveur est remplacé par un callback client pour les performances.
 """
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=False, port=8050)
+    app.run(host="0.0.0.0", debug=True, port=8050)
 
 
