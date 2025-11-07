@@ -121,6 +121,10 @@ server {
     listen 80;
     server_name votre_domaine.com;  # Ou votre IP
 
+    # Augmenter la limite de taille des requêtes pour éviter l'erreur 413
+    client_max_body_size 50M;
+    client_body_buffer_size 50M;
+
     location / {
         proxy_pass http://localhost:8050;
         proxy_http_version 1.1;
@@ -135,6 +139,12 @@ server {
         # Timeouts pour éviter les coupures
         proxy_read_timeout 300s;
         proxy_connect_timeout 75s;
+        
+        # Augmenter les buffers pour les grandes requêtes
+        proxy_buffering on;
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
     }
 }
 ```
