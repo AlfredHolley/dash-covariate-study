@@ -223,8 +223,9 @@ body {
 .category-panel {
     background: #f8f9fa;
     padding: 20px;
+    padding-top: 7px;
+    padding-bottom: 5px;
     border-radius: 2px;
-    margin-bottom: 30px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.05);
 }
 
@@ -243,7 +244,7 @@ body {
 
 .section-title {
     color: #2c3e50;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     font-weight: 400;
 }
 
@@ -267,7 +268,7 @@ body {
     font-weight: 500;
     color: #495057;
     margin-bottom: 8px;
-    font-size: 0.95rem;
+    font-size: 0.90rem;
 }
 
 .input-field {
@@ -297,6 +298,32 @@ body {
 }
 .dropdown .Select-control:hover {
     border-color: #5bc2e7 !important;
+}
+.VirtualizedSelectDisabledOption{
+    background-color: #dbdbdb  !important;
+    /* font-weight: 600 !important; */
+    color: #000000 !important;
+    font-size: 1.1em !important;
+    text-align: center !important;
+    /* border-top: 1px solid #5b5b5b !important; */
+    padding: 8px 12px !important;
+    cursor: default !important;
+    letter-spacing: 0.5px !important;
+}
+/* Style pour les en-têtes de catégorie dans le dropdown */
+.Select-menu-outer .VirtualizedSelectOption[aria-disabled="true"] {
+    background-color: #2b2b2b !important;
+    font-weight: 600 !important;
+    color: #ffffff !important;
+    font-size: 1.5em !important;
+    padding: 8px 12px !important;
+    cursor: default !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* Style pour les options de paramètres (avec indentation) */
+.Select-menu-outer .VirtualizedSelectOption:not([aria-disabled="true"]) {
+    padding-left: 24px !important;
 }
 
 /* Radio Buttons */
@@ -372,7 +399,7 @@ body {
 
 /* Results Section */
 .results-section {
-    margin-top: 30px;
+    margin-top: 0px;
 }
 
 .results-info {
@@ -412,7 +439,7 @@ body {
         display: flex;
         justify-content: center;
         align-items: center;
-        margin: 10px 0;
+        margin: 0px 0;
     }
 }
 .dash-spreadsheet-inner .dash-spreadsheet .dash-empty-01 .dash-no-filter .dash-fill-width{
@@ -532,7 +559,9 @@ body {
 /* Responsive Design */
 @media (max-width: 768px) {
 
-    
+    .input-group label {
+        font-size: 0.80rem;
+    }
     .main-title {
         font-size: 1.5rem;
     }
@@ -541,7 +570,9 @@ body {
         grid-template-columns: 1fr;
         gap: 15px;
     }
-    
+    #grouping-nav {
+        justify-content: center !important;
+    }
     .category-panel .controls-grid {
         grid-template-columns: 1fr;
     }
@@ -558,7 +589,8 @@ body {
     
     .control-panel {
         padding: 15px;
-        margin-bottom: 20px;
+        padding-bottom: 5px;
+        margin-bottom: 5px;
     }
     .category-panel {
         padding: 15px;
@@ -583,6 +615,6 @@ body {
     .chart-card {
         width: 100% !important;
         display: block;
-        margin: 10px 0;
+        margin: 0px 0px;
     }
 }

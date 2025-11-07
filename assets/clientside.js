@@ -50,11 +50,10 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
       var keys = ['age','bmi','gender'];
       return keys.map(function(k){ return k === (active||'age') ? base + ' selected' : base; });
     },
-    updateAnalysis: function(data, groupingTab, age_cat, bmi_cat, sex, category, parameter, baselineRange) {
-      if (!data || !category || !parameter) {
+    updateAnalysis: function(data, groupingTab, age_cat, bmi_cat, sex, parameter, baselineRange) {
+      if (!data || !parameter) {
         return [
-          { 'props': { 'children': [{'props': {'children': 'Select a category and parameter to start the analysis', 'style': {'color': '#6c757d', 'marginBottom': '20px', 'textAlign': 'center'}}, 'type': 'H4', 'namespace': 'dash_html_components'}] }, 'type': 'Div', 'namespace': 'dash_html_components' },
-          '',
+          { 'props': { 'children': [{'props': {'children': 'Select a parameter to start the analysis', 'style': {'color': '#6c757d', 'marginBottom': '20px', 'textAlign': 'center'}}, 'type': 'H4', 'namespace': 'dash_html_components'}] }, 'type': 'Div', 'namespace': 'dash_html_components' },
           ''
         ];
       }
@@ -103,14 +102,6 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         return replacements[param] || param.replace('[', '(').replace(']', ')');
       }
 
-      var CATEGORIES = {
-        'Hepatic health': ['ALP [U/L]', 'GGT [U/L]', 'GOT AST [U/L]', 'GPT ALT [U/L]', 'FLI'],
-        'Cardiometabolic profile': ['TC [mg/dL]', 'LDL [mg/dL]',  'HDL [mg/dL]','TG [mg/dL]', 'SBP [mmHg]', 'DBP [mmHg]', 'glucose [mg/dL]', 'HBA1C [mmol/mol]', 'TSH [µU/mL]'],
-        'Body composition': ['BMI [kg/m²]', 'weight [kg]', 'WC [cm]'],
-        'Renal function & Electrolytes': ['creatinine [mg/dL]', 'GFR [mL/min/1.73m²]', 'urea [mg/dL]', 'uric acid [mg/dL]', 'K [mmol/L]', 'Na [mmol/L]', 'Mg [mg/dL]', 'Ca [mg/dL]'],
-        'Blood & Immunity': [ 'quick [%]', 'erythrocytes [T/L]', 'hemoglobin [g/dL]', 'hematocrit [%]', 'thrombocytes [G/L]','MCV [fL]', 'MCH [pg]', 'MCHC [g/dL]'],
-        'Inflammation': ['CRP hs [mg/L]', 'ESR 1H [mm/h]', 'ESR 2H [mm/h]', 'leukocytes [G/L]'],
-      };
       // Grouping config
       var grouping = (groupingTab || 'duration');
       var xField, CATEGORY_ORDER, CATEGORY_SHORT, CATEGORY_LABELS, DISPLAY_MAP;
@@ -122,13 +113,12 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
       } else if (grouping === 'age') {
         xField = 'age_cat'; CATEGORY_ORDER = ['Young adults (18-34 years)','Middle age (35-64 years)','Older adults (≥65 years)']; CATEGORY_SHORT = ['18-34','35-64','65+']; CATEGORY_LABELS = ['<b>Young Adults</b><br/>(18-34)','<b>Middle Adults</b><br/>(35-64)','<b>Older Adults</b><br/>(65+)']; CAT_COLORS = ['#7ed321','#4a90e2','#bd10e0'];
       } else {
-        xField = 'length_of_fasting_cat'; CATEGORY_ORDER = ['3-7 days', '8-12 days', '13-17 days', '18+ days']; CATEGORY_SHORT = ['3-7','8-12','13-17','18+']; CATEGORY_LABELS = ['<b>3-7 days</b>', '<b>8-12 days</b>', '<b>13-17 days</b>', '<b>18+ days</b>']; CAT_COLORS = ['#4a90e2','#50e3c2','#f5a623','#d0021b'];
+        xField = 'length_of_fasting_cat'; CATEGORY_ORDER = ['3-7 days', '8-12 days', '13-17 days', '18+ days']; CATEGORY_SHORT = ['3-7','8-12','13-17','18+']; CATEGORY_LABELS = ['<b>3-7</b><br/>days', '<b>8-12</b><br/>days', '<b>13-17</b><br/>days', '<b>18+</b><br/>days']; CAT_COLORS = ['#4a90e2','#50e3c2','#f5a623','#d0021b'];
       }
 
-      // Vérifier que le paramètre sélectionné est valide pour la catégorie
-      var validParams = CATEGORIES[category] || [];
-      if (validParams.indexOf(parameter) === -1) {
-        return ['Invalid parameter for selected category', '', ''];
+      // Vérifier que le paramètre sélectionné est valide (pas un en-tête de catégorie)
+      if (!parameter || parameter.startsWith('_cat_')) {
+        return ['', ''];
       }
 
       // Utiliser uniquement le paramètre sélectionné
@@ -268,7 +258,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         var isMobile = vw <= 768;
         charts.push({
           'type': 'Div', 'namespace': 'dash_html_components',
-          'props': { 'className': 'chart-card', 'style': { 'width': '100%', 'margin': '8px 0', 'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center' }, 'children': [
+          'props': { 'className': 'chart-card', 'style': { 'width': '100%', 'margin': '0px 0px', 'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center' }, 'children': [
             { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'id': mountId, 'style': { 'height': isMobile ? '400px' : '450px', 'width': '100%', 'maxWidth': '800px' } } }
           ]}
         });
@@ -619,15 +609,13 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         }
       };
 
-      var info = { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'children': [] }};
-
       var chartsWrap = { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'style': { 'display': 'flex', 'flexWrap': 'wrap', 'justifyContent': 'center' }, 'children': charts }};
       var tableWrap = { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'children': [
         { 'type': 'H4', 'namespace': 'dash_html_components', 'props': { 'children': 'Mean Change [Confidence Interval 95%]', 'style': {'marginTop': '30px'} } },
         table
       ]}};
 
-      return [info, chartsWrap, tableWrap];
+      return [chartsWrap, tableWrap];
     },
     updateCohortStats: function(data, age_cat, bmi_cat, sex, varA, varB, parameter, baselineRange) {
       if (!data || !Array.isArray(data) || data.length === 0) {
@@ -731,7 +719,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         'namespace': 'dash_html_components',
         'props': {
           'className': 'chart-card',
-          'style': { 'width': '100%', 'margin': '10px 0', 'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center' },
+          'style': { 'width': '100%', 'margin': '0px 0px', 'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center' },
           'children': [
             { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'id': sankeyMountId, 'style': { 'height': isMobile ? '500px' : '600px', 'width': '100%', 'maxWidth': '800px', 'maxHeight':isMobile ? '500px' : '300px'} } }
           ]

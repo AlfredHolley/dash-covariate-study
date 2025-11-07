@@ -323,7 +323,7 @@ app.layout = html.Div([
             html.Div([
                 # Age Category
                 html.Div([
-                    html.Label("Age Category"),
+                    html.Label("Age"),
                     dcc.Dropdown(
                         id="age-input",
                         options=[
@@ -339,7 +339,7 @@ app.layout = html.Div([
                 
                 # BMI Category
                 html.Div([
-                    html.Label("BMI Category"),
+                    html.Label("BMI"),
                     dcc.Dropdown(
                         id="bmi-input",
                         options=[
@@ -380,51 +380,34 @@ app.layout = html.Div([
             
         ], className="control-panel"),
         
-    # Category & Parameter Selection
+    # Parameter Selection with categories
         html.Div([
-            html.H3("Category & Parameter", className="section-title"),
+            # html.H3("Parameter Selection", className="section-title"),
             html.Div([
-                # Category dropdown
                 html.Div([
-                    html.Label("Category"),
-                    dcc.Dropdown(
-                        id="category-dropdown",
-                        options=[{"label": cat, "value": cat} for cat in BIOMARKER_CATEGORIES.keys()],
-                        value="Cardiometabolic profile",
-                        className="dropdown",
-                        searchable=False,
-                        clearable=False
-                    )
-                ], className="input-group"),
-                # Parameter dropdown (will be populated based on category)
-                html.Div([
-                    html.Label("Parameter"),
+                    html.Label("Select Parameter"),
                     dcc.Dropdown(
                         id="parameter-dropdown",
-                        options=[{"label": param, "value": param} for param in BIOMARKER_CATEGORIES["Cardiometabolic profile"]],
+                        options=[
+                            # Créer des options groupées par catégorie
+                            *[item for category, params in BIOMARKER_CATEGORIES.items()
+                              for item in [
+                                  {"label": f"➞ {category} ", "value": f"_cat_{category}", "disabled": True}
+                              ] + [
+                                  {"label": f"  {format_parameter_display_name(param)}", "value": param}
+                                  for param in params
+                              ]
+                            ]
+                        ],
                         value="glucose [mg/dL]",
                         className="dropdown",
-                        searchable=False,
-                        clearable=False
+                        searchable=True,
+                        clearable=False,
+                        placeholder="Search or select a parameter..."
                     )
-                ], className="input-group")
-            ], className="controls-grid")
-        ], className="category-panel"),
-    
-    # Résultats
-        html.Div([
-            # Grouping nav for charts
-            dcc.Store(id="grouping-tab", data="duration"),
-            html.Div([
-                html.Button("By fasting duration", id="grp-btn-duration", n_clicks=0, className="cohort-tab-btn"),
-                html.Button("By Gender", id="grp-btn-gender", n_clicks=0, className="cohort-tab-btn"),
-                html.Button("By BMI categories", id="grp-btn-bmi", n_clicks=0, className="cohort-tab-btn"),
-                html.Button("By Age categories", id="grp-btn-age", n_clicks=0, className="cohort-tab-btn"),
-            ], className="cohort-nav", style={"marginBottom": "10px"}),
-            # Baseline filter controls
-            html.Div([
+                ], className="input-group"),
                 html.Div([
-                    html.Label("Filter by baseline value", style={"fontSize": "14px", "fontWeight": "500", "marginBottom": "4px"}),
+                    html.Label("Filter by baseline value"),
                     dcc.RangeSlider(
                         id="baseline-range-slider",
                         min=0,
@@ -435,16 +418,27 @@ app.layout = html.Div([
                         allowCross=False,
                         className="baseline-range-slider"
                     )
-                ], style={"padding": "10px", "paddingBottom": "0px"})
-            ], style={"marginBottom": "10px"}),
+                ], className="input-group")
+            ], className="controls-grid"),
             dcc.Store(id="baseline-range-store", data={"min": 0, "max": 100}),
-            html.Div(id="results-info", className="results-info"),
+        ], className="category-panel"),
+    
+    # Résultats
+        html.Div([
+            # Grouping nav for charts
+            dcc.Store(id="grouping-tab", data="duration"),
             dcc.Loading(
                 id="loading-charts",
                 type="default",
                 children=html.Div(id="charts-container"),
                 style={"margin": "20px 0"}
             ),
+            html.Div([
+                html.Button("By fasting duration", id="grp-btn-duration", n_clicks=0, className="cohort-tab-btn"),
+                html.Button("By Gender", id="grp-btn-gender", n_clicks=0, className="cohort-tab-btn"),
+                html.Button("By BMI categories", id="grp-btn-bmi", n_clicks=0, className="cohort-tab-btn"),
+                html.Button("By Age categories", id="grp-btn-age", n_clicks=0, className="cohort-tab-btn"),
+            ], className="cohort-nav", id="grouping-nav", style={"marginTop": "10px", "marginBottom": "10px"}),
             dcc.Loading(
                 id="loading-table",
                 type="default", 
@@ -528,21 +522,6 @@ app.clientside_callback(
     Input("aboutShowMoreTrigger", "n_clicks"),
 )
 
-# Callback pour mettre à jour les options du paramètre selon la catégorie
-@app.callback(
-    Output("parameter-dropdown", "options"),
-    Output("parameter-dropdown", "value"),
-    Input("category-dropdown", "value")
-)
-def update_parameter_options(category):
-    if category and category in BIOMARKER_CATEGORIES:
-        parameters = BIOMARKER_CATEGORIES[category]
-        options = [{"label": format_parameter_display_name(param), "value": param} for param in parameters]
-        # Sélectionner le premier paramètre par défaut
-        default_value = parameters[0] if parameters else None
-        return options, default_value
-    return [], None
-
 # Callback clientside optimisé pour mettre à jour le RangeSlider (utilise les valeurs pré-calculées)
 app.clientside_callback(
     ClientsideFunction(namespace='ui', function_name='updateBaselineRange'),
@@ -554,10 +533,9 @@ app.clientside_callback(
     Input("baseline-ranges-precomputed", "data")
 )
 
-# Callback client pour l'analyse (figures, tableau, infos)
+# Callback client pour l'analyse (figures, tableau)
 app.clientside_callback(
     ClientsideFunction(namespace='ui', function_name='updateAnalysis'),
-    Output("results-info", "children"),
     Output("charts-container", "children"),
     Output("data-table-container", "children"),
     Input("df-store", "data"),
@@ -565,7 +543,6 @@ app.clientside_callback(
     Input("age-input", "value"),
     Input("bmi-input", "value"),
     Input("sex-input", "data"),
-    Input("category-dropdown", "value"),
     Input("parameter-dropdown", "value"),
     Input("baseline-range-slider", "value"),
 )
