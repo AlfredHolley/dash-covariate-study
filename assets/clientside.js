@@ -244,7 +244,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                 animation: { duration: 400 },
                 inverted: !isMobile2
               },
-              title: { text: p + ' (n=' + totalPoints + ')', style: { fontSize: (isMobile2 ? '13px' : '15px'), fontFamily: '"VistaSans OT", "Vista Sans", Lato, Arial, sans-serif' } },
+              title: { text: p + '<br/><span style="font-size: 0.85em; font-weight: normal; color: #666;">n=' + totalPoints + '</span>', useHTML: true, style: { fontSize: (isMobile2 ? '13px' : '15px'), fontFamily: '"VistaSans OT", "Vista Sans", Lato, Arial, sans-serif' } },
               plotOptions: {
                 series: {
                   enableMouseTracking: true,

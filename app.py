@@ -478,7 +478,7 @@ def update_parameter_options(category):
     Output("baseline-range-store", "data"),
     Output("baseline-range-display", "children"),
     Input("parameter-dropdown", "value"),
-    State("df-store", "data")
+    Input("df-store", "data")
 )
 def update_baseline_range(parameter, df_data):
     if not parameter or not df_data:
@@ -753,6 +753,6 @@ Le callback serveur est remplacé par un callback client pour les performances.
 """
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=False, port=8050)
+    app.run(host="0.0.0.0", debug=True, port=8050)
 
 
