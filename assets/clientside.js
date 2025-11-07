@@ -590,12 +590,12 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
 
       return [info, chartsWrap, tableWrap];
     },
-    updateCohortStats: function(data, age_cat, bmi_cat, sex, varA, varB) {
+    updateCohortStats: function(data, age_cat, bmi_cat, sex, varA, varB, parameter, baselineRange) {
       if (!data || !Array.isArray(data) || data.length === 0) {
         return { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'children': 'No data available' } };
       }
 
-      // Filtrer les données selon les critères
+      // Filtrer les données selon les critères démographiques
       var filtered = data.filter(function(r) {
         var ok = true;
         if (age_cat) ok = ok && r.age_cat === age_cat;
@@ -608,10 +608,34 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         return { 'type': 'Div', 'namespace': 'dash_html_components', 'props': { 'children': 'No data matching the selected filters' } };
       }
 
+      // Extraire le range baseline pour le filtrage
+      var baselineMin = (baselineRange && Array.isArray(baselineRange) && baselineRange.length >= 2) ? Number(baselineRange[0]) : null;
+      var baselineMax = (baselineRange && Array.isArray(baselineRange) && baselineRange.length >= 2) ? Number(baselineRange[1]) : null;
+
+      // Si un paramètre et un range baseline sont définis, identifier les patients valides
+      var validPatientIds = null;
+      if (parameter && baselineMin !== null && baselineMax !== null && isFinite(baselineMin) && isFinite(baselineMax)) {
+        validPatientIds = new Set();
+        filtered.forEach(function(r) {
+          if (r.timepoint === 'Pre' && r[parameter] !== null && r[parameter] !== undefined && r[parameter] !== '') {
+            var baselineValue = Number(r[parameter]);
+            if (isFinite(baselineValue) && baselineValue >= baselineMin && baselineValue <= baselineMax) {
+              validPatientIds.add(r.meta_id);
+            }
+          }
+        });
+      }
+
       // Extraire les données uniques par meta_id (un patient = un meta_id)
       var uniquePatients = {};
       filtered.forEach(function(r) {
         var id = r.meta_id;
+        
+        // Si on a un filtre baseline, vérifier que le patient est valide
+        if (validPatientIds !== null && !validPatientIds.has(id)) {
+          return; // Exclure ce patient
+        }
+        
         if (!uniquePatients[id]) {
           uniquePatients[id] = {
             age: r.age,

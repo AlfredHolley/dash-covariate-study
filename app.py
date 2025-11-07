@@ -552,6 +552,8 @@ app.clientside_callback(
     Input("sex-input", "data"),
     Input("sankey-var-a", "data"),
     Input("sankey-var-b", "data"),
+    Input("parameter-dropdown", "value"),
+    Input("baseline-range-slider", "value"),
 )
 
 # Switch charts grouping tab
