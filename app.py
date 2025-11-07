@@ -241,32 +241,12 @@ def get_pre_post_data(df, parameter):
 # Initialisation de l'application Dash
 app = dash.Dash(__name__)
 
-# Configurer le Content Security Policy pour autoriser GTM et autres ressources
-csp_policy = (
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
-    "https://code.highcharts.com https://cdnjs.cloudflare.com "
-    "https://www.googletagmanager.com https://www.google-analytics.com "
-    "https://unpkg.com; "
-    "style-src 'self' 'unsafe-inline' "
-    "https://fonts.googleapis.com https://cdnjs.cloudflare.com "
-    "https://unpkg.com; "
-    "frame-src 'self' https://www.googletagmanager.com; "
-    "connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com; "
-    "img-src 'self' data: https:; "
-    "font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com;"
-)
-
-# Désactiver le CSP par défaut de Dash et appliquer le nôtre via un decorator Flask
-@app.server.after_request
-def set_csp_header(response):
-    response.headers['Content-Security-Policy'] = csp_policy
-    return response
-
 # Ajouter le favicon et le titre
 app.index_string = '''
 <!DOCTYPE html>
 <html>
     <head>
+        <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://code.highcharts.com https://cdnjs.cloudflare.com https://www.googletagmanager.com https://www.google-analytics.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://unpkg.com; frame-src 'self' https://www.googletagmanager.com; connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com;">
         <!-- Google Tag Manager -->
         <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-MJFVRND6');</script>
         <!-- End Google Tag Manager -->
