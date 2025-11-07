@@ -40,7 +40,7 @@ except Exception as e:
 
 BIOMARKER_CATEGORIES = {
     'Hepatic health': ['ALP [U/L]', 'GGT [U/L]', 'GOT AST [U/L]', 'GPT ALT [U/L]', 'FLI'],
-    'Cardiometabolic profile': ['TC [mg/dL]', 'LDL [mg/dL]', 'HDL [mg/dL]', 'TG [mg/dL]', 'SBP [mmHg]', 'DBP [mmHg]', 'glucose [mg/dL]', 'HBA1C [%]', 'TSH [µU/mL]'],
+    'Cardiometabolic profile': ['TC [mg/dL]', 'LDL [mg/dL]', 'HDL [mg/dL]', 'TG [mg/dL]', 'SBP [mmHg]', 'DBP [mmHg]', 'glucose [mg/dL]', 'HBA1C [mmol/mol]', 'TSH [µU/mL]'],
     'Body composition': ['BMI [kg/m²]', 'weight [kg]', 'WC [cm]'],
     'Renal function & Electrolytes': ['creatinine [mg/dL]', 'GFR [mL/min/1.73m²]', 'urea [mg/dL]', 'uric acid [mg/dL]', 'K [mmol/L]', 'Na [mmol/L]', 'Mg [mg/dL]', 'Ca [mg/dL]'],
     'Blood & Immunity': ['quick [%]','erythrocytes [T/L]', 'hemoglobin [g/dL]', 'hematocrit [%]', 'thrombocytes [G/L]', 'MCV [fL]', 'MCH [pg]', 'MCHC [g/dL]'],
@@ -81,24 +81,47 @@ def format_parameter_display_name(parameter):
     """
     Formate le nom du paramètre pour l'affichage :
     - Remplace les crochets [] par des parenthèses ()
-    - Applique des remplacements spécifiques
+    - Applique des remplacements spécifiques avec noms complets
     """
-    # Remplacements spécifiques
+    # Remplacements spécifiques avec noms complets
     replacements = {
-        'TC [mg/dL]': 'Total cholesterol (mg/dL)',
-        'SBP [mmHg]': 'Systolic BP (mmHg)',
-        'DBP [mmHg]': 'Diastolic BP (mmHg)',
-        'GOT AST [U/L]': 'GOT AST (U/L)',
-        'GPT ALT [U/L]': 'GPT ALT (U/L)',
-        'ALP [U/L]': 'ALP (U/L)',
-        'GGT [U/L]': 'GGT (U/L)',
-        'LDL [mg/dL]': 'LDL (mg/dL)',
-        'HDL [mg/dL]': 'HDL (mg/dL)',
-        'glucose [mg/dL]': 'Glucose (mg/dL)',
-        'HBA1C [%]': 'HBA1C (%)',
-        'BMI [kg/m²]': 'BMI (kg/m²)',
-        'weight [kg]': 'Weight (kg)',
-        'WC [cm]': 'Waist Circ. (cm)'
+          'TC [mg/dL]': 'Total Cholesterol (mg/dL)',
+          'LDL [mg/dL]': 'Low-Density Lipoprotein (mg/dL)',
+          'HDL [mg/dL]': 'High-Density Lipoprotein (mg/dL)',
+          'TG [mg/dL]': 'Triglycerides (mg/dL)',
+          'SBP [mmHg]': 'Systolic Blood Pressure (mmHg)',
+          'DBP [mmHg]': 'Diastolic Blood Pressure (mmHg)',
+          'GOT AST [U/L]': 'Aspartate Aminotransferase (U/L)',
+          'GPT ALT [U/L]': 'Alanine Aminotransferase (U/L)',
+          'ALP [U/L]': 'Alkaline Phosphatase (U/L)',
+          'GGT [U/L]': 'GGT (U/L)',
+          'glucose [mg/dL]': 'Glucose (mg/dL)',
+          'HBA1C [mmol/mol]': 'Hemoglobin A1c (mmol/mol)',
+          'TSH [µU/mL]': 'TSH (µU/mL)',
+          'BMI [kg/m²]': 'Body Mass Index (kg/m²)',
+          'weight [kg]': 'Weight (kg)',
+          'WC [cm]': 'Waist Circumference (cm)',
+          'creatinine [mg/dL]': 'Creatinine (mg/dL)',
+          'GFR [mL/min/1.73m²]': 'Glomerular Filtr. Rate (mL/min/1.73m²)',
+          'urea [mg/dL]': 'Urea (mg/dL)',
+          'uric acid [mg/dL]': 'Uric Acid (mg/dL)',
+          'K [mmol/L]': 'Potassium (mmol/L)',
+          'Na [mmol/L]': 'Sodium (mmol/L)',
+          'Mg [mg/dL]': 'Magnesium (mg/dL)',
+          'Ca [mg/dL]': 'Calcium (mg/dL)',
+          'quick [%]': 'Quick Test (%)',
+          'erythrocytes [T/L]': 'Erythrocytes (T/L)',
+          'hemoglobin [g/dL]': 'Hemoglobin (g/dL)',
+          'hematocrit [%]': 'Hematocrit (%)',
+          'thrombocytes [G/L]': 'Thrombocytes (G/L)',
+          'MCV [fL]': 'Mean Corp. Volume (fL)',
+          'MCH [pg]': 'Mean Corp. Hemoglobin (pg)',
+          'MCHC [g/dL]': 'Mean Corp. Hemoglobin Conc (g/dL)',
+          'CRP hs [mg/L]': 'C-Reactive Protein High-Sens. (mg/L)',
+          'ESR 1H [mm/h]': 'Erythrocyte Sedim. Rate 1H (mm/h)',
+          'ESR 2H [mm/h]': 'Erythrocyte Sedim. Rate 2H (mm/h)',
+          'leukocytes [G/L]': 'Leukocytes (G/L)',
+          'FLI': 'Fatty Liver Index'
     }
     
     # Si un remplacement spécifique existe, l'utiliser
@@ -224,6 +247,13 @@ app.index_string = '''
 <html>
     <head>
         {%metas%}
+        <!-- Google Tag Manager -->
+        <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-MJFVRND6');</script>
+        <!-- End Google Tag Manager -->
         <title>Buchinger Science - Data</title>
         <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
@@ -238,6 +268,10 @@ app.index_string = '''
         {%css%}
     </head>
     <body>
+        <!-- Google Tag Manager (noscript) -->
+        <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MJFVRND6"
+        height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+        <!-- End Google Tag Manager (noscript) -->
         {%app_entry%}
         <footer>
             {%config%}
@@ -394,7 +428,7 @@ app.layout = html.Div([
             # Baseline filter controls
             html.Div([
                 html.Div([
-                    html.Label("Filter by baseline value", style={"fontSize": "14px", "fontWeight": "500", "marginBottom": "8px"}),
+                    html.Label("Filter by baseline value", style={"fontSize": "14px", "fontWeight": "500", "marginBottom": "4px"}),
                     dcc.RangeSlider(
                         id="baseline-range-slider",
                         min=0,
@@ -404,9 +438,8 @@ app.layout = html.Div([
                         tooltip={"placement": "bottom", "always_visible": True},
                         allowCross=False,
                         className="baseline-range-slider"
-                    ),
-                    html.Div(id="baseline-range-display", style={"fontSize": "12px", "color": "#666", "marginTop": "4px", "textAlign": "center"})
-                ], style={"marginBottom": "10px", "padding": "10px"})
+                    )
+                ], style={"padding": "10px", "paddingBottom": "0px"})
             ], style={"marginBottom": "10px"}),
             dcc.Store(id="baseline-range-store", data={"min": 0, "max": 100}),
             html.Div(id="results-info", className="results-info"),
@@ -508,7 +541,7 @@ app.clientside_callback(
 def update_parameter_options(category):
     if category and category in BIOMARKER_CATEGORIES:
         parameters = BIOMARKER_CATEGORIES[category]
-        options = [{"label": param, "value": param} for param in parameters]
+        options = [{"label": format_parameter_display_name(param), "value": param} for param in parameters]
         # Sélectionner le premier paramètre par défaut
         default_value = parameters[0] if parameters else None
         return options, default_value
@@ -521,7 +554,6 @@ app.clientside_callback(
     Output("baseline-range-slider", "max"),
     Output("baseline-range-slider", "value"),
     Output("baseline-range-store", "data"),
-    Output("baseline-range-display", "children"),
     Input("parameter-dropdown", "value"),
     Input("baseline-ranges-precomputed", "data")
 )

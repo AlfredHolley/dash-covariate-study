@@ -6,19 +6,14 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
     updateBaselineRange: function(parameter, baselineRanges) {
       // Callback clientside ultra-rapide qui lit simplement les valeurs pré-calculées
       if (!parameter || !baselineRanges || !baselineRanges[parameter]) {
-        return [0, 100, [0, 100], {min: 0, max: 100}, "No parameter selected"];
+        return [0, 100, [0, 100], {min: 0, max: 100}];
       }
       
       var range = baselineRanges[parameter];
       var minVal = range.min || 0;
       var maxVal = range.max || 100;
-      var obsMin = range.observed_min || minVal;
-      var obsMax = range.observed_max || maxVal;
       
-      var displayText = "Range: " + minVal.toFixed(2) + " - " + maxVal.toFixed(2) + 
-                        " (observed: " + obsMin.toFixed(2) + " - " + obsMax.toFixed(2) + ")";
-      
-      return [minVal, maxVal, [minVal, maxVal], {min: minVal, max: maxVal}, displayText];
+      return [minVal, maxVal, [minVal, maxVal], {min: minVal, max: maxVal}];
     },
     switchSankeyVarA: function(tAge, tBmi, tGender, tFasting, current, varB){
       var ts=[tAge||0,tBmi||0,tGender||0,tFasting||0]; var max=Math.max.apply(null,ts); if(!max) return current||'gender'; var idx=ts.indexOf(max); var selected=['age','bmi','gender','fasting'][idx]; if(selected===varB) return current||'gender'; return selected;
@@ -62,6 +57,50 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
           '',
           ''
         ];
+      }
+
+      // Fonction pour formater le nom du paramètre avec nom complet
+      function formatParameterName(param) {
+        var replacements = {
+          'TC [mg/dL]': 'Total Cholesterol (mg/dL)',
+          'LDL [mg/dL]': 'Low-Density Lipoprotein (mg/dL)',
+          'HDL [mg/dL]': 'High-Density Lipoprotein (mg/dL)',
+          'TG [mg/dL]': 'Triglycerides (mg/dL)',
+          'SBP [mmHg]': 'Systolic Blood Pressure (mmHg)',
+          'DBP [mmHg]': 'Diastolic Blood Pressure (mmHg)',
+          'GOT AST [U/L]': 'Aspartate Aminotransferase (U/L)',
+          'GPT ALT [U/L]': 'Alanine Aminotransferase (U/L)',
+          'ALP [U/L]': 'Alkaline Phosphatase (U/L)',
+          'GGT [U/L]': 'GGT (U/L)',
+          'glucose [mg/dL]': 'Glucose (mg/dL)',
+          'HBA1C [mmol/mol]': 'Hemoglobin A1c (mmol/mol)',
+          'TSH [µU/mL]': 'TSH (µU/mL)',
+          'BMI [kg/m²]': 'Body Mass Index (kg/m²)',
+          'weight [kg]': 'Weight (kg)',
+          'WC [cm]': 'Waist Circumference (cm)',
+          'creatinine [mg/dL]': 'Creatinine (mg/dL)',
+          'GFR [mL/min/1.73m²]': 'Glomerular Filtr. Rate (mL/min/1.73m²)',
+          'urea [mg/dL]': 'Urea (mg/dL)',
+          'uric acid [mg/dL]': 'Uric Acid (mg/dL)',
+          'K [mmol/L]': 'Potassium (mmol/L)',
+          'Na [mmol/L]': 'Sodium (mmol/L)',
+          'Mg [mg/dL]': 'Magnesium (mg/dL)',
+          'Ca [mg/dL]': 'Calcium (mg/dL)',
+          'quick [%]': 'Quick Test (%)',
+          'erythrocytes [T/L]': 'Erythrocytes (T/L)',
+          'hemoglobin [g/dL]': 'Hemoglobin (g/dL)',
+          'hematocrit [%]': 'Hematocrit (%)',
+          'thrombocytes [G/L]': 'Thrombocytes (G/L)',
+          'MCV [fL]': 'Mean Corp. Volume (fL)',
+          'MCH [pg]': 'Mean Corp. Hemoglobin (pg)',
+          'MCHC [g/dL]': 'Mean Corp. Hemoglobin Conc (g/dL)',
+          'CRP hs [mg/L]': 'C-Reactive Protein High-Sens. (mg/L)',
+          'ESR 1H [mm/h]': 'Erythrocyte Sedim. Rate 1H (mm/h)',
+          'ESR 2H [mm/h]': 'Erythrocyte Sedim. Rate 2H (mm/h)',
+          'leukocytes [G/L]': 'Leukocytes (G/L)',
+          'FLI': 'Fatty Liver Index'
+        };
+        return replacements[param] || param.replace('[', '(').replace(']', ')');
       }
 
       var CATEGORIES = {
@@ -263,7 +302,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                 animation: { duration: 400 },
                 inverted: !isMobile2
               },
-              title: { text: 'Changes in ' + p + '     <span style="font-size: 0.85em; font-weight: bold; color: #666;">  n=' + totalPatients + '</span>', useHTML: true, style: { fontSize: (isMobile2 ? '13px' : '15px'), fontFamily: '"VistaSans OT", "Vista Sans", Lato, Arial, sans-serif' } },
+              title: { text: 'Changes in ' + formatParameterName(p) + '     <span style="font-size: 0.85em; font-weight: bold; color: #666;"><br>  n=' + totalPatients + '</span>', useHTML: true, style: { fontSize: (isMobile2 ? '13px' : '15px'), fontFamily: '"VistaSans OT", "Vista Sans", Lato, Arial, sans-serif' } },
               plotOptions: {
                 series: {
                   enableMouseTracking: true,
