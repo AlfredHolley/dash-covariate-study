@@ -439,7 +439,6 @@ app.layout = html.Div([
                 ], style={"padding": "10px", "paddingBottom": "0px"})
             ], style={"marginBottom": "10px"}),
             dcc.Store(id="baseline-range-store", data={"min": 0, "max": 100}),
-            html.Div(id="results-info", className="results-info"),
             dcc.Loading(
                 id="loading-charts",
                 type="default",
