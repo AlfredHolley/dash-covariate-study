@@ -181,7 +181,7 @@ app.index_string = '''
 <html>
     <head>
         {%metas%}
-        <title>Buchinger TEST4 - Data</title>
+        <title>Buchinger Science - Data</title>
         <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
         <script src="https://code.highcharts.com/highcharts.js"></script>
@@ -347,20 +347,24 @@ app.layout = html.Div([
                 html.Button("By BMI categories", id="grp-btn-bmi", n_clicks=0, className="cohort-tab-btn"),
                 html.Button("By Age categories", id="grp-btn-age", n_clicks=0, className="cohort-tab-btn"),
             ], className="cohort-nav", style={"marginBottom": "10px"}),
-            # Baseline coloring controls
+            # Baseline filter controls
             html.Div([
                 html.Div([
-                    html.Span("Color by patient baseline", style={"marginRight": "10px", "fontSize": "14px", "fontWeight": "500"}),
-                    dcc.Checklist(
-                        id="baseline-color-toggle",
-                        options=[{"label": "", "value": "enabled"}],
-                        value=[],
-                        style={"display": "inline-block"}
+                    html.Label("Filter by baseline value", style={"fontSize": "14px", "fontWeight": "500", "marginBottom": "8px"}),
+                    dcc.RangeSlider(
+                        id="baseline-range-slider",
+                        min=0,
+                        max=100,
+                        value=[0, 100],
+                        marks=None,
+                        tooltip={"placement": "bottom", "always_visible": True},
+                        allowCross=False,
+                        className="baseline-range-slider"
                     ),
-                    html.Div(id="baseline-category-badges", style={"display": "inline-flex", "gap": "8px", "marginLeft": "15px", "alignItems": "center"})
-                ], style={"display": "flex", "justifyContent": "flex-end", "alignItems": "center", "marginBottom": "10px"})
+                    html.Div(id="baseline-range-display", style={"fontSize": "12px", "color": "#666", "marginTop": "4px", "textAlign": "center"})
+                ], style={"marginBottom": "10px", "padding": "10px"})
             ], style={"marginBottom": "10px"}),
-            dcc.Store(id="baseline-categories", data={"categories": []}),
+            dcc.Store(id="baseline-range-store", data={"min": 0, "max": 100}),
             html.Div(id="results-info", className="results-info"),
             dcc.Loading(
                 id="loading-charts",
@@ -466,75 +470,56 @@ def update_parameter_options(category):
         return options, default_value
     return [], None
 
-# Callback pour générer les catégories baseline et les pastilles selon le paramètre
+# Callback pour calculer min/max baseline observé et mettre à jour le RangeSlider
 @app.callback(
-    Output("baseline-categories", "data"),
-    Output("baseline-category-badges", "children"),
-    Input("parameter-dropdown", "value")
+    Output("baseline-range-slider", "min"),
+    Output("baseline-range-slider", "max"),
+    Output("baseline-range-slider", "value"),
+    Output("baseline-range-store", "data"),
+    Output("baseline-range-display", "children"),
+    Input("parameter-dropdown", "value"),
+    Input("df-store", "data")
 )
-def update_baseline_categories(parameter):
-    if not parameter or parameter not in BIOMARKER_THRESHOLDS:
-        return {"categories": []}, []
+def update_baseline_range(parameter, df_data):
+    if not parameter or not df_data:
+        return 0, 100, [0, 100], {"min": 0, "max": 100}, "No parameter selected"
     
-    thresholds = BIOMARKER_THRESHOLDS[parameter]
-    has_low = thresholds['low'] is not None
-    has_high = thresholds['high'] is not None
+    # Convertir les données en DataFrame
+    df = pd.DataFrame(df_data)
     
-    if has_low and has_high:
-        # Cas avec too low / normal / too high
-        categories = ["too_low", "normal", "too_high"]
-        badges = [
-            html.Span("Too Low", style={
-                "padding": "4px 8px",
-                "borderRadius": "4px",
-                "fontSize": "12px",
-                "backgroundColor": "#f5a623",
-                "color": "white",
-                "fontWeight": "500"
-            }),
-            html.Span("Normal", style={
-                "padding": "4px 8px",
-                "borderRadius": "4px",
-                "fontSize": "12px",
-                "backgroundColor": "#50e3c2",
-                "color": "white",
-                "fontWeight": "500"
-            }),
-            html.Span("Too High", style={
-                "padding": "4px 8px",
-                "borderRadius": "4px",
-                "fontSize": "12px",
-                "backgroundColor": "#d0021b",
-                "color": "white",
-                "fontWeight": "500"
-            })
-        ]
-    elif has_high:
-        # Cas avec normal / at risk
-        categories = ["normal", "at_risk"]
-        badges = [
-            html.Span("Normal", style={
-                "padding": "4px 8px",
-                "borderRadius": "4px",
-                "fontSize": "12px",
-                "backgroundColor": "#50e3c2",
-                "color": "white",
-                "fontWeight": "500"
-            }),
-            html.Span("At Risk", style={
-                "padding": "4px 8px",
-                "borderRadius": "4px",
-                "fontSize": "12px",
-                "backgroundColor": "#d0021b",
-                "color": "white",
-                "fontWeight": "500"
-            })
-        ]
+    # Récupérer les données pré/post pour ce paramètre
+    pre_post_data = get_pre_post_data(df, parameter)
+    
+    if pre_post_data.empty or 'Pre' not in pre_post_data.columns:
+        return 0, 100, [0, 100], {"min": 0, "max": 100}, "No baseline data available"
+    
+    # Calculer min et max des valeurs baseline observées
+    baseline_values = pre_post_data['Pre'].dropna()
+    if baseline_values.empty:
+        return 0, 100, [0, 100], {"min": 0, "max": 100}, "No baseline data available"
+    
+    min_baseline = float(baseline_values.min())
+    max_baseline = float(baseline_values.max())
+    
+    # Arrondir pour un meilleur affichage
+    # Utiliser un pas approprié selon l'ordre de grandeur
+    range_val = max_baseline - min_baseline
+    if range_val > 0:
+        # Arrondir min vers le bas et max vers le haut avec un pas approprié
+        step = max(1, range_val / 100)  # Environ 100 pas
+        min_rounded = np.floor(min_baseline / step) * step
+        max_rounded = np.ceil(max_baseline / step) * step
     else:
-        categories = []
-        badges = []
+        min_rounded = min_baseline
+        max_rounded = max_baseline + 1
     
-    return {"categories": categories, "thresholds": thresholds}, badges
+    # Valeur par défaut : tout le range
+    default_value = [min_rounded, max_rounded]
+    
+    # Texte d'affichage
+    display_text = f"Range: {min_rounded:.2f} - {max_rounded:.2f} (observed: {min_baseline:.2f} - {max_baseline:.2f})"
+    
+    return min_rounded, max_rounded, default_value, {"min": min_rounded, "max": max_rounded}, display_text
 
 # Callback client pour l'analyse (figures, tableau, infos)
 app.clientside_callback(
@@ -549,8 +534,7 @@ app.clientside_callback(
     Input("sex-input", "data"),
     Input("category-dropdown", "value"),
     Input("parameter-dropdown", "value"),
-    Input("baseline-categories", "data"),
-    Input("baseline-color-toggle", "value"),
+    Input("baseline-range-slider", "value"),
 )
 
 # Cohort statistics section (Sankey diagram)
@@ -769,4 +753,6 @@ Le callback serveur est remplacé par un callback client pour les performances.
 """
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=False, port=8050)
+    app.run(host="0.0.0.0", debug=True, port=8050)
+
+

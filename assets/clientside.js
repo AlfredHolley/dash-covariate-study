@@ -38,7 +38,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
       var keys = ['age','bmi','gender'];
       return keys.map(function(k){ return k === (active||'age') ? base + ' selected' : base; });
     },
-    updateAnalysis: function(data, groupingTab, age_cat, bmi_cat, sex, category, parameter, baselineCategories, baselineColorToggle) {
+    updateAnalysis: function(data, groupingTab, age_cat, bmi_cat, sex, category, parameter, baselineRange) {
       if (!data || !category || !parameter) {
         return [
           { 'props': { 'children': [{'props': {'children': 'Select a category and parameter to start the analysis', 'style': {'color': '#6c757d', 'marginBottom': '20px', 'textAlign': 'center'}}, 'type': 'H4', 'namespace': 'dash_html_components'}] }, 'type': 'Div', 'namespace': 'dash_html_components' },
@@ -109,18 +109,31 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
       var headerCounts = null;
       var p = params[0]; // Un seul paramètre
       
+        // Extraire le range baseline pour le filtrage
+        var baselineMin = (baselineRange && Array.isArray(baselineRange) && baselineRange.length >= 2) ? Number(baselineRange[0]) : null;
+        var baselineMax = (baselineRange && Array.isArray(baselineRange) && baselineRange.length >= 2) ? Number(baselineRange[1]) : null;
+        
         var xs = []; var ys = []; var patientIds = [];
         var perCat = {}; CATEGORY_ORDER.forEach(function(c){ perCat[c] = []; });
         Object.keys(byId).forEach(function(id){
           var rec = byId[id];
           var catKey = rec.meta[xField];
           if (rec.pre[p] !== undefined && rec.post[p] !== undefined && catKey) {
-            var delta = rec.post[p] - rec.pre[p];
-            var cat = catKey;
-            if (CATEGORY_ORDER.indexOf(cat) !== -1 && isFinite(delta)) {
-              xs.push(cat); ys.push(delta); patientIds.push(id);
-              perCat[cat].push(delta);
-              totalIds.add(id);
+            // Filtrer selon le range baseline
+            var baselineValue = rec.pre[p];
+            var inRange = true;
+            if (baselineMin !== null && baselineMax !== null && isFinite(baselineMin) && isFinite(baselineMax)) {
+              inRange = (baselineValue >= baselineMin && baselineValue <= baselineMax);
+            }
+            
+            if (inRange) {
+              var delta = rec.post[p] - rec.pre[p];
+              var cat = catKey;
+              if (CATEGORY_ORDER.indexOf(cat) !== -1 && isFinite(delta)) {
+                xs.push(cat); ys.push(delta); patientIds.push(id);
+                perCat[cat].push(delta);
+                totalIds.add(id);
+              }
             }
           }
         });
@@ -175,41 +188,8 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         var seriesData = CATEGORY_ORDER.map(function(cat){ return fiveNum(perCat[cat]); });
         var counts = CATEGORY_ORDER.map(function(cat){ return (perCat[cat] || []).length; });
         
-        // Fonction pour classifier une valeur baseline selon les seuils
-        var classifyBaseline = function(value) {
-          if (!baselineCategories || !baselineCategories.thresholds || !baselineCategories.categories) {
-            return null;
-          }
-          var thresholds = baselineCategories.thresholds;
-          var cats = baselineCategories.categories;
-          var val = Number(value);
-          if (!isFinite(val)) return null;
-          
-          // Cas avec too low / normal / too high
-          if (cats.indexOf('too_low') !== -1 && cats.indexOf('normal') !== -1 && cats.indexOf('too_high') !== -1) {
-            if (thresholds.low !== null && val < thresholds.low) return 'too_low';
-            if (thresholds.high !== null && val > thresholds.high) return 'too_high';
-            return 'normal';
-          }
-          // Cas avec normal / at risk
-          else if (cats.indexOf('normal') !== -1 && cats.indexOf('at_risk') !== -1) {
-            if (thresholds.high !== null && val > thresholds.high) return 'at_risk';
-            return 'normal';
-          }
-          return null;
-        };
-        
-        // Couleurs pour les catégories baseline
-        var baselineColors = {
-          'too_low': '#f5a623',
-          'normal': '#50e3c2',
-          'too_high': '#d0021b',
-          'at_risk': '#d0021b'
-        };
-        
-        // Points individuels pour jitter
+        // Points individuels pour jitter (déjà filtrés selon le range baseline)
         var scatterData = [];
-        var useBaselineColor = baselineColorToggle && baselineColorToggle.indexOf('enabled') !== -1;
         xs.forEach(function(cat, i){
           var idx = CATEGORY_ORDER.indexOf(cat);
           if (idx >= 0 && isFinite(ys[i])) {
@@ -217,18 +197,6 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
               x: idx,
               y: ys[i]
             };
-            
-            // UNIQUEMENT si le toggle est activé, utiliser la couleur baseline
-            // Sinon, ne pas définir de couleur (Highcharts utilisera sa couleur par défaut uniforme)
-            if (useBaselineColor && patientIds[i] && byId[patientIds[i]] && byId[patientIds[i]].pre[p] !== undefined) {
-              var baselineCategory = classifyBaseline(byId[patientIds[i]].pre[p]);
-              if (baselineCategory && baselineColors[baselineCategory]) {
-                pointData.marker = {
-                  fillColor: baselineColors[baselineCategory]
-                };
-              }
-            }
-            
             scatterData.push(pointData);
           }
         });
