@@ -201,6 +201,9 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
           }
         });
         if (headerCounts === null) { headerCounts = counts.slice(); }
+        
+        // Calculer le nombre total de points
+        var totalPoints = scatterData.length;
 
         var mountId = 'hc_' + p.replace(/[^a-zA-Z0-9_]/g,'_');
         var vw = (typeof window !== 'undefined') ? window.innerWidth : 1024;
@@ -241,7 +244,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                 animation: { duration: 400 },
                 inverted: !isMobile2
               },
-              title: { text: p, style: { fontSize: (isMobile2 ? '13px' : '15px'), fontFamily: '"VistaSans OT", "Vista Sans", Lato, Arial, sans-serif' } },
+              title: { text: p + ' (n=' + totalPoints + ')', style: { fontSize: (isMobile2 ? '13px' : '15px'), fontFamily: '"VistaSans OT", "Vista Sans", Lato, Arial, sans-serif' } },
               plotOptions: {
                 series: {
                   enableMouseTracking: true,

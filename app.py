@@ -478,7 +478,7 @@ def update_parameter_options(category):
     Output("baseline-range-store", "data"),
     Output("baseline-range-display", "children"),
     Input("parameter-dropdown", "value"),
-    Input("df-store", "data")
+    State("df-store", "data")
 )
 def update_baseline_range(parameter, df_data):
     if not parameter or not df_data:
