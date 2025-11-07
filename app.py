@@ -401,7 +401,7 @@ app.layout = html.Div([
                         ],
                         value="glucose [mg/dL]",
                         className="dropdown",
-                        searchable=True,
+                        searchable=False,
                         clearable=False,
                         placeholder="Search or select a parameter..."
                     )
