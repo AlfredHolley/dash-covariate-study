@@ -2,6 +2,7 @@
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
+
 }
 .cohort-tab-btn {
     background: #ffffff;
@@ -140,6 +141,9 @@ body {
     max-width: 600px;
     margin: 0 auto;
     margin-bottom: 20px;
+}
+#grouping-nav {
+    justify-content: center !important;
 }
 
 /* Collapsible long text under header */
@@ -569,9 +573,6 @@ body {
     .controls-grid {
         grid-template-columns: 1fr;
         gap: 15px;
-    }
-    #grouping-nav {
-        justify-content: center !important;
     }
     .category-panel .controls-grid {
         grid-template-columns: 1fr;
