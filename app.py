@@ -50,6 +50,33 @@ BIOMARKER_CATEGORIES = {
 # Tous les biomarqueurs disponibles
 ALL_BIOMARKERS = [param for params in BIOMARKER_CATEGORIES.values() for param in params]
 
+# Pré-calculer min/max baseline pour tous les paramètres au démarrage
+print("Pré-calcul des ranges baseline pour tous les paramètres...")
+BASELINE_RANGES = {}
+for param in ALL_BIOMARKERS:
+    if param in df_wide.columns and 'timepoint' in df_wide.columns:
+        pre_values = df_wide[(df_wide['timepoint'] == 'Pre') & (df_wide[param].notna())][param]
+        if not pre_values.empty:
+            min_val = float(pre_values.min())
+            max_val = float(pre_values.max())
+            # Arrondir pour un meilleur affichage
+            range_val = max_val - min_val
+            if range_val > 0:
+                step = max(1, range_val / 100)
+                min_rounded = float(np.floor(min_val / step) * step)
+                max_rounded = float(np.ceil(max_val / step) * step)
+            else:
+                min_rounded = min_val
+                max_rounded = max_val + 1
+            
+            BASELINE_RANGES[param] = {
+                'min': min_rounded,
+                'max': max_rounded,
+                'observed_min': min_val,
+                'observed_max': max_val
+            }
+print(f"Pré-calcul terminé pour {len(BASELINE_RANGES)} paramètres.")
+
 def format_parameter_display_name(parameter):
     """
     Formate le nom du paramètre pour l'affichage :
@@ -258,6 +285,7 @@ app.layout = html.Div([
     #main container open
     html.Div([
     dcc.Store(id="df-store", data=df_wide.to_dict('records')),
+    dcc.Store(id="baseline-ranges-precomputed", data=BASELINE_RANGES),
     # Panneau de contrôle
         html.Div([
             html.H3("Filtering Criteria", className="section-title"),
@@ -486,48 +514,17 @@ def update_parameter_options(category):
         return options, default_value
     return [], None
 
-# Callback pour calculer min/max baseline observé et mettre à jour le RangeSlider
-@app.callback(
+# Callback clientside optimisé pour mettre à jour le RangeSlider (utilise les valeurs pré-calculées)
+app.clientside_callback(
+    ClientsideFunction(namespace='ui', function_name='updateBaselineRange'),
     Output("baseline-range-slider", "min"),
     Output("baseline-range-slider", "max"),
     Output("baseline-range-slider", "value"),
     Output("baseline-range-store", "data"),
     Output("baseline-range-display", "children"),
     Input("parameter-dropdown", "value"),
-    Input("df-store", "data")
+    Input("baseline-ranges-precomputed", "data")
 )
-def update_baseline_range(parameter, df_data):
-    if not parameter or not df_data:
-        return 0, 100, [0, 100], {"min": 0, "max": 100}, "No parameter selected"
-    
-    # Convertir les données en DataFrame
-    df = pd.DataFrame(df_data)
-    
-    # Utiliser la fonction optimisée pour calculer min/max sans calculs coûteux
-    min_baseline, max_baseline = get_baseline_range_fast(df, parameter)
-    
-    if min_baseline is None or max_baseline is None:
-        return 0, 100, [0, 100], {"min": 0, "max": 100}, "No baseline data available"
-    
-    # Arrondir pour un meilleur affichage
-    # Utiliser un pas approprié selon l'ordre de grandeur
-    range_val = max_baseline - min_baseline
-    if range_val > 0:
-        # Arrondir min vers le bas et max vers le haut avec un pas approprié
-        step = max(1, range_val / 100)  # Environ 100 pas
-        min_rounded = np.floor(min_baseline / step) * step
-        max_rounded = np.ceil(max_baseline / step) * step
-    else:
-        min_rounded = min_baseline
-        max_rounded = max_baseline + 1
-    
-    # Valeur par défaut : tout le range
-    default_value = [min_rounded, max_rounded]
-    
-    # Texte d'affichage
-    display_text = f"Range: {min_rounded:.2f} - {max_rounded:.2f} (observed: {min_baseline:.2f} - {max_baseline:.2f})"
-    
-    return min_rounded, max_rounded, default_value, {"min": min_rounded, "max": max_rounded}, display_text
 
 # Callback client pour l'analyse (figures, tableau, infos)
 app.clientside_callback(

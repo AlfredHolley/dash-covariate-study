@@ -3,6 +3,23 @@
 
 window.dash_clientside = Object.assign({}, window.dash_clientside, {
   ui: {
+    updateBaselineRange: function(parameter, baselineRanges) {
+      // Callback clientside ultra-rapide qui lit simplement les valeurs pré-calculées
+      if (!parameter || !baselineRanges || !baselineRanges[parameter]) {
+        return [0, 100, [0, 100], {min: 0, max: 100}, "No parameter selected"];
+      }
+      
+      var range = baselineRanges[parameter];
+      var minVal = range.min || 0;
+      var maxVal = range.max || 100;
+      var obsMin = range.observed_min || minVal;
+      var obsMax = range.observed_max || maxVal;
+      
+      var displayText = "Range: " + minVal.toFixed(2) + " - " + maxVal.toFixed(2) + 
+                        " (observed: " + obsMin.toFixed(2) + " - " + obsMax.toFixed(2) + ")";
+      
+      return [minVal, maxVal, [minVal, maxVal], {min: minVal, max: maxVal}, displayText];
+    },
     switchSankeyVarA: function(tAge, tBmi, tGender, tFasting, current, varB){
       var ts=[tAge||0,tBmi||0,tGender||0,tFasting||0]; var max=Math.max.apply(null,ts); if(!max) return current||'gender'; var idx=ts.indexOf(max); var selected=['age','bmi','gender','fasting'][idx]; if(selected===varB) return current||'gender'; return selected;
     },
@@ -115,6 +132,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         
         var xs = []; var ys = []; var patientIds = [];
         var perCat = {}; CATEGORY_ORDER.forEach(function(c){ perCat[c] = []; });
+        var baselinePerCat = {}; CATEGORY_ORDER.forEach(function(c){ baselinePerCat[c] = []; }); // Stocker les valeurs baseline
         Object.keys(byId).forEach(function(id){
           var rec = byId[id];
           var catKey = rec.meta[xField];
@@ -132,6 +150,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
               if (CATEGORY_ORDER.indexOf(cat) !== -1 && isFinite(delta)) {
                 xs.push(cat); ys.push(delta); patientIds.push(id);
                 perCat[cat].push(delta);
+                baselinePerCat[cat].push(baselineValue); // Stocker la baseline
                 totalIds.add(id);
               }
             }
@@ -201,6 +220,9 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
           }
         });
         if (headerCounts === null) { headerCounts = counts.slice(); }
+        
+        // Calculer le nombre total de patients
+        var totalPatients = scatterData.length;
 
         var mountId = 'hc_' + p.replace(/[^a-zA-Z0-9_]/g,'_');
         var vw = (typeof window !== 'undefined') ? window.innerWidth : 1024;
@@ -241,7 +263,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                 animation: { duration: 400 },
                 inverted: !isMobile2
               },
-              title: { text: p, style: { fontSize: (isMobile2 ? '13px' : '15px'), fontFamily: '"VistaSans OT", "Vista Sans", Lato, Arial, sans-serif' } },
+              title: { text: p + '     <span style="font-size: 0.85em; font-weight: bold; color: #666;">  n=' + totalPatients + '</span>', useHTML: true, style: { fontSize: (isMobile2 ? '13px' : '15px'), fontFamily: '"VistaSans OT", "Vista Sans", Lato, Arial, sans-serif' } },
               plotOptions: {
                 series: {
                   enableMouseTracking: true,
@@ -452,9 +474,22 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         // Calculer les statistiques pour chaque catégorie
         CATEGORY_ORDER.forEach(function(cat){
           var arr = perCat[cat];
+          var baselineArr = baselinePerCat[cat];
           if (!tableRows[cat]) {
             tableRows[cat] = {};
           }
+          
+          // Calculer les stats de baseline (mean ± std)
+          if (baselineArr && baselineArr.length > 0) {
+            var baselineMean = baselineArr.reduce((a,b)=>a+b,0)/baselineArr.length;
+            var baselineVariance = baselineArr.reduce((a,b)=>a + Math.pow(b-baselineMean,2),0) / (baselineArr.length - 1 || 1);
+            var baselineStd = Math.sqrt(baselineVariance);
+            tableRows[cat][p + '_baseline'] = baselineMean.toFixed(2) + ' ± ' + baselineStd.toFixed(2);
+          } else {
+            tableRows[cat][p + '_baseline'] = 'N/A';
+          }
+          
+          // Calculer les stats de changement (mean [CI95])
           if (arr.length > 0) {
             var m = arr.reduce((a,b)=>a+b,0)/arr.length;
             var variance = arr.reduce((a,b)=>a + Math.pow(b-m,2),0) / (arr.length - 1 || 1);
@@ -469,20 +504,29 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
 
       // DataTable Dash transposé : catégories en lignes, paramètre en colonne
       var firstColTitle = (grouping==='duration') ? 'days' : (grouping==='gender'?'Gender': grouping==='bmi'?'BMI categories':'Age categories');
-      var columns = [{name: firstColTitle, id: 'Category'}].concat([{
-        name: p,
-        id: 'Parameter',
-        type: 'text'
-      }]);
+      var columns = [{name: firstColTitle, id: 'Category'}].concat([
+        {
+          name: 'Baseline',
+          id: 'Baseline',
+          type: 'text'
+        },
+        {
+          name: 'Change',
+          id: 'Parameter',
+          type: 'text'
+        }
+      ]);
       
       // Créer les lignes : une ligne par catégorie
       var dataRows = CATEGORY_ORDER.map(function(cat, idx){
         var nVal = headerCounts ? headerCounts[idx] : 0;
         var catLabel = CATEGORY_SHORT[idx] + '  (n=' + nVal + ')';
-        var value = tableRows[cat] && tableRows[cat][p] ? tableRows[cat][p] : 'N/A';
+        var baselineValue = tableRows[cat] && tableRows[cat][p + '_baseline'] ? tableRows[cat][p + '_baseline'] : 'N/A';
+        var changeValue = tableRows[cat] && tableRows[cat][p] ? tableRows[cat][p] : 'N/A';
         return {
           'Category': catLabel,
-          'Parameter': value
+          'Baseline': baselineValue,
+          'Parameter': changeValue
         };
       });
       var vw = (typeof window !== 'undefined') ? window.innerWidth : 1024;
@@ -521,6 +565,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
           'style_data': { 'backgroundColor': 'white', 'border': 'none' },
           'style_data_conditional': [
             { 'if': { 'column_id': 'Category' }, 'fontWeight': '500' },
+            { 'if': { 'column_id': 'Baseline' }, 'fontSize': catFontSize, 'textAlign': 'center' },
             { 'if': { 'column_id': 'Parameter' }, 'fontSize': catFontSize, 'textAlign': 'center' }
           ],
           'style_table': { 
