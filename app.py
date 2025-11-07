@@ -121,6 +121,22 @@ def filter_outliers_zscore(data, columns, threshold=4):
     
     return filtered_data
 
+def get_baseline_range_fast(df, parameter):
+    """
+    Version optimisée pour calculer uniquement le min/max baseline.
+    Évite les calculs coûteux (pivot, merge, filtrage outliers).
+    """
+    if parameter not in df.columns or 'timepoint' not in df.columns:
+        return None, None
+    
+    # Filtrer uniquement les valeurs Pre pour ce paramètre
+    pre_values = df[(df['timepoint'] == 'Pre') & (df[parameter].notna())][parameter]
+    
+    if pre_values.empty:
+        return None, None
+    
+    return float(pre_values.min()), float(pre_values.max())
+
 def get_pre_post_data(df, parameter):
     """
     Récupère les données pré/post pour un paramètre donné à partir d'un DF "wide"
@@ -487,19 +503,11 @@ def update_baseline_range(parameter, df_data):
     # Convertir les données en DataFrame
     df = pd.DataFrame(df_data)
     
-    # Récupérer les données pré/post pour ce paramètre
-    pre_post_data = get_pre_post_data(df, parameter)
+    # Utiliser la fonction optimisée pour calculer min/max sans calculs coûteux
+    min_baseline, max_baseline = get_baseline_range_fast(df, parameter)
     
-    if pre_post_data.empty or 'Pre' not in pre_post_data.columns:
+    if min_baseline is None or max_baseline is None:
         return 0, 100, [0, 100], {"min": 0, "max": 100}, "No baseline data available"
-    
-    # Calculer min et max des valeurs baseline observées
-    baseline_values = pre_post_data['Pre'].dropna()
-    if baseline_values.empty:
-        return 0, 100, [0, 100], {"min": 0, "max": 100}, "No baseline data available"
-    
-    min_baseline = float(baseline_values.min())
-    max_baseline = float(baseline_values.max())
     
     # Arrondir pour un meilleur affichage
     # Utiliser un pas approprié selon l'ordre de grandeur
